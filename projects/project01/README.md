@@ -1,4 +1,5 @@
-# BINF6250F25
+# Project 01: Functional file parsing
+Nikaela Aitken and Brooks Groharing
 
 # Introduction
 In this first assignment of the course, we implemented a program that can parse VCF (Variant Call Format) files. Specifically we load a .vcf data file taken from ClinVar, and crawl through its lines (without loading the full file in memory), and extracting all diseases associated with rare variants. These are combined to create a dictionary of observed diseases, and the number of variants associated with them in the file.
