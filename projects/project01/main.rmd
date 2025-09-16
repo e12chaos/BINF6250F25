@@ -47,11 +47,11 @@ def check_file_structure(filename):
         data_rows = []
         
         for line in f:
-            line = line.strip()  # removes the white spaces from the beginning and ends
+            line = line.strip()  
             
             if line.startswith('##'):
                 meta_headers.append(line)
-            elif line.startswith('#CHROM'):  # Fixed: was missing the #
+            elif line.startswith('#CHROM'):  
                 column_header = line
             else:
                 data_rows.append(line)
@@ -187,6 +187,4 @@ def read_file(filename):
 if __name__ == "__main__":
     pprint(read_file("clinvar_20190923_short.vcf"))
 ```
-### appendix ###
 
-#used claude sonnet 4 on 2509-13 with the question what is
