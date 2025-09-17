@@ -5,10 +5,37 @@ Nikaela Aitken and Brooks Groharing
 In this first assignment of the course, we implemented a program that can parse VCF (Variant Call Format) files. Specifically we load a .vcf data file taken from ClinVar, and crawl through its lines (without loading the full file in memory), and extracting all diseases associated with rare variants. These are combined to create a dictionary of observed diseases, and the number of variants associated with them in the file.
 
 # Pseudocode
-Put pseudocode in this box:
-
 ```
-Some pseudocode here
+def parse_line(line):
+	if line starts with #:
+		return empty list
+
+	fields = split line by tabs
+	info_field = fields[7]
+	info_pairs = split info_field by ;
+	
+	info_dict = new dict
+	for pair in info_pairs:
+    extract value
+    extract key
+    info_dict[key] = value		
+	
+	filtered_diseases = new list
+	if info_dict[AF_EXAC] < threshold:
+		diseases = split info_dict[clndn] by |
+		for disease in diseases:
+      if valid disease:
+        add to filtered_diseases
+		return filtered_diseases
+	else:
+		return empty list
+def read_file(file):
+	disease_counts = new dict
+
+	for line in file:
+		diseases = parse_line(line)
+		for disease in diseases:
+			increment disease_counts[disease] by 1
 ```
 
 # Successes
