@@ -108,38 +108,31 @@ def parse_line(line, af_limit = 0.0001):
     # Get the INFO column (8th column, index 7-because of count starting with 0 )
     info = fields[7]
     
-    # Parse the INFO field to extract key-value pairs - we know the ; because of instructions "Semi-colon (;) separated key-value pairs"
+    # Parse the INFO field to extract key-value pairs.
+    #   We know the ; because of instructions "Semi-colon (;) separated key-value pairs"
     info_pairs = info.split(';')
     
-    # Look for AF_EXAC and CLNDN
+    info_dict = {}
+    for pair in info_pairs:
+      if '=' in pair: # ignore entries with no '='
+        key, value = pair.split('=', 1)  # Split only on first '=' in case value contains '='
+        info_dict[key] = value
     
-    af_exac = None 
-    clndn = None
-    
-    for pair in info_pairs: #if there is something with the number is seperates out the number and counts 
-        if '=' in pair:
-            key, value = pair.split('=', 1)  # Split only on first '=' in case value contains '='
-            if key == 'AF_EXAC':
-                try:
-                    af_exac = float(value)
-                except ValueError:
-                    # If we can't convert to float, skip this line
-                    return []
-            elif key == 'CLNDN':
-                clndn = value
-    
-    # If AF_EXAC is not present, skip the line
-    if af_exac is None:
+    # Exract clndn. If it isn't present, skip the line.
+    if not "CLNDN" in info_dict.keys():
         return []
+    clndn = info_dict["CLNDN"]
+    
+    # Exract af_exac and convert to float.
+    # If it isn't present, or can't be converted, skip the line.
+    try:
+      af_exac = float(info_dict["AF_EXAC"])
+    except:
+      return []
     
     # Only extract diseases if the variant is rare
     if af_exac < af_limit:
-        # if no diseases listed, return an empty list
-        if clndn is None:
-            return []
-        
-        # Otherwise, we'll extract pipe-separated diseases and clean them up
-        
+        # Extract pipe-separated values
         diseases = clndn.split('|')
         
         # Filter out unwanted diseases
@@ -149,10 +142,10 @@ def parse_line(line, af_limit = 0.0001):
             if disease not in ['not_specified', 'not_provided']:
                 filtered_diseases.append(disease)
         
+        # Return the valid diseases in a list.
         return filtered_diseases
-    
-    # If variant is not rare, return empty list
-    return []
+    else:
+      return [] # If variant is not rare, return empty list
 
 
 # Parse a VCF file line by line, extracting the diseases associated with each rare variant
@@ -172,11 +165,8 @@ def read_file(filename):
                 
                 # Count each disease
                 for disease in diseases:
-                    if disease in disease_counts:
-                        disease_counts[disease] += 1
-                    else:
-                        disease_counts[disease] = 1
-    
+                   disease_counts[disease] = disease_counts.get(disease, 0) + 1
+                
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
         return {}
