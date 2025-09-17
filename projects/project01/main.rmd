@@ -14,31 +14,26 @@ library('reticulate')
 use_python('/usr/bin/python3')
 ```
 
-##Download Files and check if they are there take a 
 ```{python}
-#import needed libraries
+# Import needed libraries
 import os
 from pprint import pprint
 
-#set the file as a string varibale name
-
+# Path to .vcf file
 datafile = "clinvar_20190923_short.vcf"
 
-#check if file exists, if not tells us. 
+# Check if file exists 
 if os.path.exists(datafile) == True:
   print("File exists! yayyyy")
 else:
   print("Cannot find the file, double check the path")
   
-
 ```
 
 
 ```{python}
 ##claude - "why isnt my code working" with corrections
 # Check the headers and first few lines of the data
-# Always look at some of your data first - good practice for data analysis!
-
 def check_file_structure(filename):
     """Check the structure of the VCF file"""
     with open(filename, 'r') as f:
@@ -86,17 +81,19 @@ if os.path.exists(datafile):
 
 
 
-##parse_line funciton 
+##parse_line function 
 
 
 ```{python}
 #!/usr/bin/env python
 from pprint import pprint
 
-
-# Modify this function signature and fill in the details
-def parse_line(line):
-
+# Given a line from a .vcf-formatted file, check if it's a data line.
+#   If yes, extract the rarity (AF_EXAC).
+#   If its rarity is below af_limit, return a list of associated diseases
+#   Otherwise, return an empty list.
+def parse_line(line, af_limit = 0.0001):
+    
     # Skip metadata and header lines
     if line.startswith('#'):
         return []
@@ -114,7 +111,8 @@ def parse_line(line):
     # Parse the INFO field to extract key-value pairs - we know the ; because of instructions "Semi-colon (;) separated key-value pairs"
     info_pairs = info.split(';')
     
-    # Look for AF_EXAC and CLNDN (## remember that not naming af_exac and clndn below in lower case because they are local not global variables and inside of a function)
+    # Look for AF_EXAC and CLNDN
+    
     af_exac = None 
     clndn = None
     
@@ -134,12 +132,14 @@ def parse_line(line):
     if af_exac is None:
         return []
     
-    # If the variant is rare (AF_EXAC < 0.0001)
-    if af_exac < 0.0001:
-        if clndn is None: #if its empty return an empty list
+    # Only extract diseases if the variant is rare
+    if af_exac < af_limit:
+        # if no diseases listed, return an empty list
+        if clndn is None:
             return []
         
-        # Split diseases by pipe separator and clean them up
+        # Otherwise, we'll extract pipe-separated diseases and clean them up
+        
         diseases = clndn.split('|')
         
         # Filter out unwanted diseases
@@ -155,14 +155,19 @@ def parse_line(line):
     return []
 
 
-# Modify this function signature and fill in the details
+# Parse a VCF file line by line, extracting the diseases associated with each rare variant
+# Count the total number of rare variants associated with each disease, and print to console. 
 def read_file(filename):
-
+    
+    # Dict to store disease counts
     disease_counts = {} 
     
     try:
+        # loop through lines, without loading entire file into memory
         with open(filename, 'r') as file:
             for line in file:
+                
+                # Extract dictionary of diseases
                 diseases = parse_line(line)
                 
                 # Count each disease
@@ -180,8 +185,6 @@ def read_file(filename):
         return {}
     
     return disease_counts
-
-    pass
 
 
 if __name__ == "__main__":
