@@ -1,0 +1,183 @@
+---
+title: "Project 01"
+author: "Nikaela Aitken and Brooks Groharing"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('reticulate')
+use_python('/usr/bin/python3')
+```
+
+```{python}
+# Import needed libraries
+import os
+from pprint import pprint
+
+# Path to .vcf file
+datafile = "clinvar_20190923_short.vcf"
+
+# Check if file exists 
+if os.path.exists(datafile) == True:
+  print("File exists! yayyyy")
+else:
+  print("Cannot find the file, double check the path")
+  
+```
+
+
+```{python}
+##claude - "why isnt my code working" with corrections
+# Check the headers and first few lines of the data
+def check_file_structure(filename):
+    """Check the structure of the VCF file"""
+    with open(filename, 'r') as f:
+        meta_headers = []
+        column_header = None
+        data_rows = []
+        
+        for line in f:
+            line = line.strip()  
+            
+            if line.startswith('##'):
+                meta_headers.append(line)
+            elif line.startswith('#CHROM'):  
+                column_header = line
+            else:
+                data_rows.append(line)
+                if len(data_rows) >= 5:
+                    break
+    
+    # Display results (fixed indentation)
+    print(f"Metadata headers: {len(meta_headers)} lines")
+    print("Last few metadata headers:")
+    for header in meta_headers[-3:]:
+        print(f"  {header}")
+    
+    print(f"\nColumn header:")
+    if column_header:
+        print(f"  {column_header}")
+        print(f"\nColumns: {column_header.split()}")
+    else:
+        print("  No column header found!")
+    
+    print(f"\nFirst {len(data_rows)} data rows:")
+    for i, row in enumerate(data_rows, 1):
+        fields = row.split('\t')
+        if len(fields) >= 3:
+            print(f"  Row {i}: {fields[0]} {fields[1]} {fields[2]} ... (showing first 3 fields)")
+        else:
+            print(f"  Row {i}: {row}")
+
+# Use the function
+if os.path.exists(datafile):
+    check_file_structure(datafile)
+```
+
+
+
+##parse_line function 
+
+
+```{python}
+#!/usr/bin/env python
+from pprint import pprint
+
+# Given a line from a .vcf-formatted file, check if it's a data line.
+#   If yes, extract the rarity (AF_EXAC).
+#   If its rarity is below af_limit, return a list of associated diseases
+#   Otherwise, return an empty list.
+def parse_line(line, af_limit = 0.0001):
+    
+    # Skip metadata and header lines
+    if line.startswith('#'):
+        return []
+    
+    # Split the lines into columns
+    fields = line.strip().split('\t')
+    
+    # each line is made up of tab (\t) separated values that make up eight (8) columns
+    if len(fields) < 8:
+        return []
+    
+    # Get the INFO column (8th column, index 7-because of count starting with 0 )
+    info = fields[7]
+    
+    # Parse the INFO field to extract key-value pairs.
+    #   We know the ; because of instructions "Semi-colon (;) separated key-value pairs"
+    info_pairs = info.split(';')
+    
+    info_dict = {}
+    for pair in info_pairs:
+      if '=' in pair: # ignore entries with no '='
+        key, value = pair.split('=', 1)  # Split only on first '=' in case value contains '='
+        info_dict[key] = value
+    
+    # Exract clndn. If it isn't present, skip the line.
+    if not "CLNDN" in info_dict.keys():
+        return []
+    clndn = info_dict["CLNDN"]
+    
+    # Exract af_exac and convert to float.
+    # If it isn't present, or can't be converted, skip the line.
+    try:
+      af_exac = float(info_dict["AF_EXAC"])
+    except:
+      return []
+    
+    # Only extract diseases if the variant is rare
+    if af_exac < af_limit:
+        # Extract pipe-separated values
+        diseases = clndn.split('|')
+        
+        # Filter out unwanted diseases
+        filtered_diseases = []
+        for disease in diseases:
+            disease = disease.strip()
+            if disease not in ['not_specified', 'not_provided']:
+                filtered_diseases.append(disease)
+        
+        # Return the valid diseases in a list.
+        return filtered_diseases
+    else:
+      return [] # If variant is not rare, return empty list
+
+
+# Parse a VCF file line by line, extracting the diseases associated with each rare variant
+# Count the total number of rare variants associated with each disease, and print to console. 
+def read_file(filename):
+    
+    # Dict to store disease counts
+    disease_counts = {} 
+    
+    try:
+        # loop through lines, without loading entire file into memory
+        with open(filename, 'r') as file:
+            for line in file:
+                
+                # Extract dictionary of diseases
+                diseases = parse_line(line)
+                
+                # Count each disease
+                for disease in diseases:
+                   disease_counts[disease] = disease_counts.get(disease, 0) + 1
+                
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
+        return {}
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return {}
+    
+    return disease_counts
+
+
+if __name__ == "__main__":
+    pprint(read_file("clinvar_20190923_short.vcf"))
+```
+
