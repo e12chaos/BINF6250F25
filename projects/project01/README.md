@@ -14,21 +14,22 @@ def parse_line(line):
 	info_field = fields[7]
 	info_pairs = split info_field by ;
 	
-	info_dict = new dict
+	info_dict = new dictionary
 	for pair in info_pairs:
-    extract value
-    extract key
-    info_dict[key] = value		
+	    extract value
+	    extract key
+	    info_dict[key] = value		
 	
 	filtered_diseases = new list
 	if info_dict[AF_EXAC] < threshold:
 		diseases = split info_dict[clndn] by |
 		for disease in diseases:
-      if valid disease:
-        add to filtered_diseases
+      		if valid disease:
+		        add to filtered_diseases
 		return filtered_diseases
 	else:
 		return empty list
+
 def read_file(file):
 	disease_counts = new dict
 
