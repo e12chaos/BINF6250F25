@@ -90,7 +90,8 @@ def build_markov_model(markov_model, new_text):
     #print(words)
     
     
-    #check to see if there are enough words, just in case we had a longer set of words that werent easy to count. 
+    #check to see if there are enough words, just in case we had a longer set of words that werent easy to count. the -1 because witg the loops from index 0 up to the second-to-last word.
+That’s because you always look at a 'current_word' and the 'next_word'. If you went all the way to the last word, there’d be no "next" one to look at, and Python would throw an IndexError.
     for i in range(len(words)-1):
         current_word = words[i]
         next_word = words[i +1]
