@@ -90,7 +90,7 @@ def build_markov_model(markov_model, new_text):
     #print(words)
     
     
-    #check to see if there are enough words, just in case we had a longer set of words that werent easy to count. the -1 because witg the loops from index 0 up to the second-to-last word. That’s because you always look at a 'current_word' and the 'next_word'. If you went all the way to the last word, there’d be no "next" one to look at, and Python would throw an IndexError.
+    #check to see if there are enough words, just in case we had a longer set of words that werent easy to count. 
     for i in range(len(words)-1):
         current_word = words[i]
         next_word = words[i +1]
@@ -127,19 +127,28 @@ In the above model, each event or word is output from only the previous state wi
 
 ```{python}
 def build_markov_model(markov_model, text, order=1):
-    '''
+    """
     Function to build or add to a Nth order Markov model given a string of text
-    
-    Args: 
+
+    Args:
     markov_model (dict of dicts): a dictionary of word:(next_word:frequency pairs)
     or None if a new model is being built
     new_text (str): a string to build or add to the moarkov_model
     order (int): the number of previous states to consider for the model
-    
+
     Returns:
     markov_model (dict of dicts): an updated/new markov_model
-    '''
-    pass
+    """
+    if not markov_model:
+        markov_model = defaultdict(Counter)
+    # pad the start w/ #order of starts --
+    text = (("*S* " * order) + text + " *E*").split()
+    for i in range(len(text) - order + 1):
+        current_state = tuple(text[i : i + order])
+        next_word = text[i + order : i + order + 1]
+        markov_model[current_state].update(next_word)
+
+    return markov_model
 
 markov_model = dict()
 text = "one fish two fish red fish blue red fish blue"
@@ -147,11 +156,34 @@ markov_model = build_markov_model(markov_model, text, order=2)
 markov_model
 ```
 
+
+
+
 ## Generate text from Markov Model
 
 Markov models are "generative models". That is, the probability states in the model can be used to generate output following the conditional probabilities in the model.
 
 We will now generate a sequence of text from the Markov model. For this section, I recommend using np.random.choice, which allows for you to provide a probability distribution for drawing the next edge in the chain.
+
+
+```{python}
+def count_to_prob(markov_model):
+    """Function to convert markov model from frequencies to probabilities.
+
+    Args:
+        markov_model (defaultdict[Counter]): Markov model of frequencies
+
+    Returns:
+        defaultdict[Counter]: Markov model of probabilities
+    """
+    return {
+        state: {
+            next_state: count / transitions.total()
+            for next_state, count in transitions.items()
+        }
+        for state, transitions in markov_model.items()
+    }
+```
 
 ```{python}
 import numpy as np
@@ -174,8 +206,12 @@ def get_next_word(current_word, markov_model, seed=42):
     Randomly draw from these to generate the next state
     
     '''
+   #which allows for you to provide a probability distribution for drawing the next edge in the chain. 
+    np.random.choice
+    
+    
+    
     pass
-
 
 def generate_random_text(markov_model, seed=42):
     '''
@@ -194,7 +230,19 @@ def generate_random_text(markov_model, seed=42):
     Return sentence
     
     '''
-    pass
+    order = len(next(iter(markov_model)))
+    words = []
+    # pad the start with 'order' start states to avoid losing information
+    # about the first (order - 1) words of the text
+    state = tuple(["*S*"] * order)
+    while True:
+        next_word = get_next_word(state, markov_model)
+        words.append(next_word)
+        state = state[1:] + (next_word,)
+        if "*E*" in state:
+            break
+    return " ".join(words)
+```
 ```
 
 ---
