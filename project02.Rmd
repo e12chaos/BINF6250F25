@@ -210,7 +210,9 @@ def get_next_word(current_word, markov_model, seed=42):
    #which allows for you to provide a probability distribution for drawing the next edge in the chain. 
     #np.random.choice
     
-    np.random.seed(seed)
+    
+    if not np.random.seed:
+      np.random.seed(seed)
     
     # Get the possible next words and their counts
     next_words_counts = markov_model[current_word]
