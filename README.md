@@ -51,6 +51,8 @@ Divide and Conquer - we worked asynchronously because our schedules were both bu
 
 # Struggles
 Managing tuple states and ensuring proper concatenation for state transitions required careful debugging
+Github
+R ondemand 
 
 
 # Personal Reflections
