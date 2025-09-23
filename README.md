@@ -57,7 +57,9 @@ R ondemand
 
 # Personal Reflections
 ## Group Leader
-Group leader's reflection on the project
+Working on this Markov chains project highlighted several areas of growth for me. I'm still struggling with GitHub - the version control workflow and pushing from onDemand rstudio, but I recognize this is a crucial skill I need to develop for collaborative programming projects.
+Having a good partner who was willing to help me troubleshoot made a significant difference in completing this assignment. Their patience when I got stuck on the infinite loop issue and their willingness to work asynchronously allowed us to make steady progress despite different schedules. This collaboration taught me the value of clear communication about coding problems and the importance of explaining what isn't working rather than just saying "it's broken."
+I found myself doing a lot of YouTube videos to review Python dictionaries, particularly nested dictionary structures and the Counter class from collections. The concept of storing states as tuples for higher-order Markov models was initially confusing, and these additional resources helped solidify my understanding of how the data structures work together.
 
 ## Other member
 Other members' reflections on the project
