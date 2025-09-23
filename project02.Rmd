@@ -1,6 +1,6 @@
 ---
 title: "Project 02"
-author: "Nikaela Aitken and "
+author: "Nikaela Aitken and Michael Bambha"
 date: "`r Sys.Date()`"
 output:
     github_document:
@@ -20,6 +20,8 @@ use_python('/usr/bin/python3')
 import numpy #matrix calculations
 import pandas
 import random
+from collections import defaultdict
+from collections import Counter
 ```
 
 
@@ -143,11 +145,10 @@ def build_markov_model(markov_model, text, order=1):
         markov_model = defaultdict(Counter)
     # pad the start w/ #order of starts --
     text = (("*S* " * order) + text + " *E*").split()
-    for i in range(len(text) - order + 1):
+    for i in range(len(text) - order):  # Remove +1 here to avoid index error
         current_state = tuple(text[i : i + order])
-        next_word = text[i + order : i + order + 1]
-        markov_model[current_state].update(next_word)
-
+        next_word = text[i + order]  # Get single word, not slice
+        markov_model[current_state][next_word] += 1  # Direct increment
     return markov_model
 
 markov_model = dict()
@@ -187,7 +188,7 @@ def count_to_prob(markov_model):
 
 ```{python}
 import numpy as np
-
+#nikaela need to do
 
 def get_next_word(current_word, markov_model, seed=42):
     '''
@@ -207,11 +208,26 @@ def get_next_word(current_word, markov_model, seed=42):
     
     '''
    #which allows for you to provide a probability distribution for drawing the next edge in the chain. 
-    np.random.choice
+    #np.random.choice
     
+    np.random.seed(seed)
     
+    # Get the possible next words and their counts
+    next_words_counts = markov_model[current_word]
     
-    pass
+    # Extract words and counts
+    words = list(next_words_counts.keys())
+    counts = list(next_words_counts.values())
+    
+    # Convert counts to probabilities
+    total_count = sum(counts)
+    probabilities = [count / total_count for count in counts]
+    
+    # Randomly select next word based on probabilities
+    next_word = np.random.choice(words, p=probabilities)
+    
+    return next_word
+    
 
 def generate_random_text(markov_model, seed=42):
     '''
@@ -237,13 +253,13 @@ def generate_random_text(markov_model, seed=42):
     state = tuple(["*S*"] * order)
     while True:
         next_word = get_next_word(state, markov_model)
+        if next_word == "*E*":  #  Check BEFORE appending  I had to come back and try fixing an infinite loop by changing the end condition from checking if "E" appears anywhere in the state tuple to checking if the next generated word is "E" before adding it to the output.
+            break
         words.append(next_word)
         state = state[1:] + (next_word,)
-        if "*E*" in state:
-            break
     return " ".join(words)
 ```
-```
+
 
 ---
 
@@ -253,12 +269,13 @@ Up till now, you have only been working with a line or two of the Dr. Seuss' _On
 
 ```{python}
 # Now just add some more training data to the markov model. You can find it under data/one_fish_two_fish.txt
-
 markov_model = dict()
 # Read in the whole book
-pass
+with open("one_fish_two_fish.txt", "r") as file:
+  text = file.read()
+  markov_model = build_markov_model(markov_model, text, order=1)
 
-print (generate_random_text(markov_model,seed=7))
+print(generate_random_text(markov_model, seed=7))
 ```
 
 ---
@@ -270,7 +287,7 @@ Now, let's play around with some Shakespeare.
 ```{python}
 # An example of a more complex text that we can use to generate more complex output
 sonet_markov_model = dict()
-file = open("data/sonnets.txt", "r")
+file = open("sonnets.txt", "r")
 sonet = ""
 for line in file:
     line = line.strip()
