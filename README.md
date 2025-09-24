@@ -62,6 +62,22 @@ Having a good partner who was willing to help me troubleshoot made a significant
 I found myself doing a lot of YouTube videos to review Python dictionaries, particularly nested dictionary structures and the Counter class from collections. The concept of storing states as tuples for higher-order Markov models was initially confusing, and these additional resources helped solidify my understanding of how the data structures work together.
 
 ## Other member
-Other members' reflections on the project
+This was a fun assignment, and it was a good exercise in managing sliding windows, reproducibility w/ random text, and 
+Markov chain implementation. In typical programming I try to avoid `while` loops unless necessary,
+(especially `while True`) but I think it made sense to use in this case. 
+Of course the danger with this is that there is an assumption that the break condition
+is always going to be met, and when I noticed our script running for more than a couple
+of seconds on a fairly small amount of text, it was pretty evident that something was getting stuck.
+One of the interesting things I came across was the behavior of `np.random.seed` since
+it actually retains a global random state outside of local function context. We both
+came across this issue, and I realized that resetting the seed within the
+`get_next_word` function was causing the random state to get reset, effectively
+creating an infinite loop. To fix this was very simple, just checking if there
+is a seed and only setting it if there isn't one.
+
+Overall, I think this helped my coding skills especially just from reading code
+and understanding how I expect it'll work, then running it and comparing with
+my expectations. This way of practice seems to be very effective and oftentimes our expectations
+of how code will behave breaks, which showed that I might have some gaps in my understanding (like the numpy seed issue).
 
 # Generative AI Appendix
