@@ -1,6 +1,6 @@
 ---
 title: "Project 03"
-author: "Your Name"
+author: "Nikaela Aitken and Allen"
 date: "`r format(Sys.time(), '%Y%m%d')`"
 output:
   github_document:
@@ -26,7 +26,7 @@ For this project, it tasks you with creating a sequence logo to plot the motif s
 This is a very minor portion of the project and is best used for checking your work. That means that if you cannot get the library
 that you are about to install to work, don't worry. At a bare minimum, you only need `numpy` to complete this project.
 
-```{r, install_seqlogo}
+```{r, install_seqlogo, echo=FALSE}
 reticulate::conda_install(
   envname = "r-reticulate", 
   packages=c("seqlogo", "pdf2svg", "setuptools"),
@@ -81,6 +81,12 @@ Probability of chosing position $m = \frac{A_{m}}{\sum_{l}A_{l}}$ for positions 
 
 ![]('figures/Gibbs_Sampling.png')
 
+```{python}
+
+```
+
+
+
 
 ```{python}
 def GibbsMotifFinder (seqs, k, seed=42):
@@ -91,12 +97,105 @@ def GibbsMotifFinder (seqs, k, seed=42):
         seqs (str list): a list of sequences, not necessarily in same lengths
         k (int): the length of motif to find
         seed (int, default=42): seed for np.random
-
     Returns:
         pfm (numpy array): dimensions are 4xlength
         
     '''
-    pass
+    
+    
+    
+    #first random pick of k-length sequences from each line of DNA as Motifs : To select a random sequence, use `random.randint()` or `numpy.random.randint()`
+    
+    #automatic_samples = np.random.randint()
+    #seed=42 up top
+    np.random.seed(seed)
+    N=len(seqs)
+    
+    
+    #first we will pick a random k-lenfth sequence from each line of DNA as motifs
+    #set an empty dictionary 
+    motifs = []
+    for seq in seqs:
+      max_start=len(seq)-k
+      if max_start <0:
+        raise ValueError(f"this sequence is too short for k={k}")
+      start_position = np.random.randint(0, max_start + 1)
+      motifs.append(seq[start_position:start_position + k])
+      
+    iterations=10000
+    previous_motifs = None
+    
+    for j in range(iterations):
+      i = np.random.randint(0,N) # we are randomly selecting one sequence to update
+      
+      #here we put the scores if larger than or less than what to count or throw out
+      #Build the PFM from al motifs
+      motifs_except_i = motifs[:i] + motifs[i+1:]
+      pfm = build_pfm(motifs_except_i, k)
+        
+      #Convert PFM to PWM for scoring
+      pwm = build_pwm(pfm)
+        
+      # Score all possible k-mers in sequence i (both strands)
+      seq_i = seqs[i]#extract the i-th sequence from th list
+      scores = []# creates an empty list
+      kmers = []#creating an empty list 
+      
+      #positive strand scores
+      for pos in range(len(seq_i) -k +1):
+        kmer = seq_i[pos:pos +k]
+        score_positive = score_kmer(kmer, pwm)
+        scores.append(score_positive)
+        kmers.append(kmer)
+     
+      # negative strand scores - in reverse complememnt so we can match them
+      
+      seq_i_reverseC = reverse_complement(seq_i)
+      for pos in range(len(seq_i_reverseC) - k +1):#The last valid starting position for a k-mer is len(seq) - k, and we add +1 because range() is exclusive of its stop value.
+        kmer = seq_i_reverseC[pos:pos + k]
+        score_neg = score_kmer(kmer, pwm)
+        scores.append(score_neg)
+        kmers.append(kmer)
+    
+    
+      #we need to convert the score to proabilities 
+    
+      scores = np.array(scores)  
+      # Subtract max for numerical stability
+      scores = scores - np.max(scores)
+      probs = np.exp(scores)
+      probs = probs / np.sum(probs)
+        
+      # Select position m probabilistically based on scores
+      selected_idx = np.random.choice(len(kmers), p=probs)
+        
+      # Update motif_i based on selected k-mer
+      motifs[i] = kmers[selected_idx]
+        
+      # Check for convergence (motifs stop changing)
+      if previous_motifs is not None and motifs == previous_motifs: 
+        print(f"Converged at iteration {j}")
+        break
+        
+      previous_motifs = motifs.copy()  
+    
+    # Return final PFM
+    final_pfm = build_pfm(motifs, k)
+    
+    return final_pfm
+        
+    #seqs = {'x' :[1], 'y' :[-1]}
+    #num_samples = 10000
+    #for dnas in range(num_samples):
+      #curr_y = samples ['y'][-1]
+      #new_x = np.random.randint(curr_y/2, np.sqrt(3/4)) #here we put the scores if larger than or less than what to count or throw out
+      #new_y = np.random.randint(new_x/2, np.sqrt(3/4))
+      #seqs['y'].append(new.y)
+      
+    #check the line graphs x:number of iterations. y:information per parameter bits
+    # for markdown Track how much information the algorithm has learned as it keeps iterating.
+    #plt.line(seqs[x])
+    
 ```
 
 
@@ -105,8 +204,8 @@ def GibbsMotifFinder (seqs, k, seed=42):
 # You do not need to edit this or the section below. This is the Driver program
 
 #read promoters, store in a list of strings
-seq_file="data/GCF_000009045.1_ASM904v1_genomic.fna.gz"
-gff_file="data/GCF_000009045.1_ASM904v1_genomic.gff.gz"
+seq_file="data/GCF_000009045.1_ASM904v1_genomic.fna"
+gff_file="data/GCF_000009045.1_ASM904v1_genomic.gff"
 
 seqs = []
 
