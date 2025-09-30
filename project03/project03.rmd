@@ -1,6 +1,6 @@
 ---
 title: "Project 03"
-author: "Nikaela Aitken and Allen Benavidez"
+author: "Your Name"
 date: "`r format(Sys.time(), '%Y%m%d')`"
 output:
   github_document:
