@@ -109,7 +109,7 @@ def GibbsMotifFinder (seqs, k, seed=42):
     #automatic_samples = np.random.randint()
     #seed=42 up top
     np.random.seed(seed)
-    N=len(seqs)
+    N=len(seqs)#N is total number of sequences in our dataset
     
     
     #first we will pick a random k-lenfth sequence from each line of DNA as motifs
@@ -158,7 +158,7 @@ def GibbsMotifFinder (seqs, k, seed=42):
         kmers.append(kmer)
     
     
-      #we need to convert the score to proabilities These sites are often not strand-specific and so both scores on the negative as well as positive strand should be considered
+      #we need to convert the score to proabilities. These sites are often not strand-specific and so both scores on the negative as well as positive strand should be considered
     
       scores = np.array(scores)  
       # Subtract max for numerical stability
