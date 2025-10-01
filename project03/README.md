@@ -12,11 +12,14 @@ Some pseudocode here
 
 
 # Struggles
-- **Strand directionality complexity**: Implementing the scoring for forward and reverse complement strands required careful indexing and thinking through molecular biology principles- that I kept second guessing myself on.
+- **Strand directionality complexity**: Implementing the scoring for forward and reverse complement strands required careful thinking through molecular biology principles- that I kept second guessing myself on.
 
 - **Asynchronous collaboration**: Coordinating schedules proved difficult, especially when the group leader was ill for a week. Working asynchronously meant delayed feedback loops and difficulty debugging together in real-time. We had to rely heavily on detailed comments and commit messages to communicate our progress and questions.
 
 - **Unequal workload distribution due to illness**: When one team member is sick, the remaining members must either take on additional work or wait for recovery, both of which impact project momentum and team dynamics.
+
+- **Understanding MCMC conceptually**: Grasping how random sampling can lead to optimal solutions was initially counterintuitive. The probabilistic selection choosing k-mers based on weighted scores rather than always picking the best, which I am not sure led to the correct graph,but we do have a graph
+
 
 # Personal Reflections
 ## Group Leader (Nikaela Aitken)
