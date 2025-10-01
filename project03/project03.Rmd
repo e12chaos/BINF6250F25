@@ -183,18 +183,6 @@ def GibbsMotifFinder (seqs, k, seed=42):
     final_pfm = build_pfm(motifs, k)
     
     return final_pfm
-        
-    #seqs = {'x' :[1], 'y' :[-1]}
-    #num_samples = 10000
-    #for dnas in range(num_samples):
-      #curr_y = samples ['y'][-1]
-      #new_x = np.random.randint(curr_y/2, np.sqrt(3/4)) #here we put the scores if larger than or less than what to count or throw out
-      #new_y = np.random.randint(new_x/2, np.sqrt(3/4))
-      #seqs['y'].append(new.y)
-      
-    #check the line graphs x:number of iterations. y:information per parameter bits
-    # for markdown Track how much information the algorithm has learned as it keeps iterating.
-    #plt.line(seqs[x])
     
 ```
 
