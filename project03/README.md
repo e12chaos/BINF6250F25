@@ -1,15 +1,23 @@
 # Introduction
-Description of the project
+In this project we utilized Gibbs Sampling method to identify motifs and create a position frequency matrix (PFM). A sequence was randomly selected and a motif within the sequence was subsequently selected. The PFM was created from the 
+remaining sequences and then used to build the Position Weight Matrix (PWM). The PWM was then utilized for scoring. This process is repeated several times to identify the most common motifs in a series of genetic sequences that may pose some biological importance.
 
 # Pseudocode
-Put pseudocode in this box:
-
 ```
-Some pseudocode here
+GibbsMotifFinder function(seqs, k, seed=42)
+    randomly select a k-mer in each sequence greater than 0 
+    Add the k-mer to list/dictionary of motifs
+    Iterate through the sequences several times to select random
+    Build PFM without the sequence with motif
+    Convert PFM to PWM
+    Score K-mers
+    convert scores into probabilites
+    sample new motifs based on probabilities
+    when convergence occurs, return the final PFM
 ```
 
 # Successes
-
+One of our successes was overcoming our difference in schedules to complete the assignment. Understanding the Gibbs Sampling method was tricky at first but after some self studying we managed to get a grasp on how the method works.
 
 # Struggles
 - **Strand directionality complexity**: Implementing the scoring for forward and reverse complement strands required careful thinking through molecular biology principles- that I kept second guessing myself on.
@@ -48,8 +56,13 @@ flowchart TD
     J -- Yes --> C
     J -- No --> K[Done: use all samples to approximate distribution]
 ```
-## Other member
-Other members' reflections on the project
+## Other member (Allen Benavidez)
+When beginning this project, my initial obstacle was being able to understand
+what Gibbs sampling does. Though I understood its purpose, I had trouble following
+how the math works out and why each step during the process matters. After 
+taking some time to study I understood it enough to where I could begin the 
+project. There were obstacles during writing the code but through collaboration
+I was able understand how Gibbs Sampling process could be written with code.
 
 # Generative AI Appendix
 As per the syllabus
