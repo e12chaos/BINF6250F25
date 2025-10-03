@@ -16,7 +16,7 @@ Description of the team's learning points
 Description of the stumbling blocks the team experienced
 
 # Personal Reflections
-## Group Leader
+## Group Leader(Nikaela Aitken)
 Group leader's reflection on the project
 
 ## Other member
