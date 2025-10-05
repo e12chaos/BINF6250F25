@@ -122,6 +122,7 @@ class DeBruijnGraph():
         ['thi', ...]
         '''
         result = self.eulerian_walk(self.first_node, seed=seed)#Calls the elerian_walk function starting at our first node
+        
         return result
         
     def eulerian_walk(self, node, seed=None):
@@ -141,7 +142,7 @@ class DeBruijnGraph():
         >>> dbg.eulerian_walk('thi', seed=1) #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
         ['est', ...]
         '''
-        if len(self.graph[node]) == 0:#Is the current node out of edges? if you reach a node with no more edges (odd number?) you're done. You've hit a dead end, so you return just that final node.
+        if len(self.graph[node]) == 0:#Is the current node out of edges? if you reach a node with no more edges you're done. You've hit a dead end, so you return just that final node.
             return [node]
         else:
             if seed:
@@ -149,7 +150,7 @@ class DeBruijnGraph():
             #next_node = "fool "
             next_node = random.choice(self.graph[node])#Randomly picks one of the nodes that the current node connects to
             self.remove_edge(node, next_node)#Deletes the edge you just chose from the graph Whytho???? So that we don't use the same edge twice. we are going to consume the edges after we walk them
-            tour = self.eulerian_walk(next_node, seed)#Calls itself on the next node and gets back the tour from that point forward# This is the recursion part we keep following edges until you hit the base 
+            tour = self.eulerian_walk(next_node, seed)#Calls itself on the next node and gets back the tour from that point forward# This is the recursion part we keep following edges until you hit the base             
             tour.append(node)
             return tour
 ```
@@ -161,9 +162,20 @@ class DeBruijnGraph():
 graph = DeBruijnGraph("fool me once shame on shame on you fool me", 6)
 print(graph.graph)
 walk = graph.print_eulerian_walk(seed=4)
-walk[0] + "".join(map(lambda x: x[-1], walk[1:]))
-#### the last line is still reading wrong
-#'ol mem loof uoy no emahs no emahs ecno em ' but i think everything else is correct!!!!
+
+print("Marcus string:")
+walk[0] + "".join(map(lambda x: reversed(x[-1]), walk[1:]))
+
+
+sentence=""
+i= len(walk)-1
+while i>0:
+  sentence += walk[i][0]
+  i-=1
+sentence += walk[0][0:]
+print("My string:")
+sentence
+
 ```
 
 
