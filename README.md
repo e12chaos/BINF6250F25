@@ -1,9 +1,32 @@
 # BINF6250F25
 # Introduction
-Description of the project
+This project implements a De Bruijn graph–based algorithm to reconstruct paths from k-mers in a given input string.  
+We used Python to represent the graph with dictionaries and performed a recursive Eulerian walk to produce the final tour.
 
 # Pseudocode
-Put pseudocode in this box:
+- **add_edge(self, left, right)**
+  - Access the graph dictionary.  
+  - Add `right` to the list at key `left`.  
+  - `self.graph[left].append(right)`
+
+- **remove_edge(self, left, right)**
+  - Similar to `add_edge`, but use `remove` instead.  
+  - `self.graph[left].remove(right)`
+
+- **build_debruijn_graph(self, input_string, k)**
+  - Extract k-mers from the input string.  
+  - Split each k-mer into `left` and `right`.  
+  - Call the `add_edge` function above to build the graph.  
+  - Save the first k-mer as the starting node.
+
+- **eulerian_walk(self, node, seed=None)**
+  - Begin the walk at the starting node.  
+  - For each node:  
+    - Follow a random valid edge from the node.  
+    - Remove that edge after using it.  
+    - Recurse to continue the walk.  
+  - Recursion stops when the current node has no remaining edges.  
+  - Always check if a node still has edges before continuing.
 
 ```
 Some pseudocode here
