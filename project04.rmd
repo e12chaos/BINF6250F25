@@ -123,8 +123,16 @@ class DeBruijnGraph():
         '''
         result = self.eulerian_walk(self.first_node, seed=seed)#Calls the elerian_walk function starting at our first node
         
-        return result
+        sentence=[]
+        i= len(result)-1
         
+        while i>0:
+          sentence += result[i][0]
+          i-=1
+        sentence += result[0][0:]
+        
+        return sentence
+      
     def eulerian_walk(self, node, seed=None):
         ''' This is a recursive function that follows all edges from a node
         to traverse the graph
@@ -162,19 +170,8 @@ class DeBruijnGraph():
 graph = DeBruijnGraph("fool me once shame on shame on you fool me", 6)
 print(graph.graph)
 walk = graph.print_eulerian_walk(seed=4)
+walk[0] + "".join(map(lambda x: x[-1], walk[1:]))
 
-print("Marcus string:")
-walk[0] + "".join(map(lambda x: reversed(x[-1]), walk[1:]))
-
-
-sentence=""
-i= len(walk)-1
-while i>0:
-  sentence += walk[i][0]
-  i-=1
-sentence += walk[0][0:]
-print("My string:")
-sentence
 
 ```
 
