@@ -56,6 +56,12 @@ Using these, we reduced the `add_edge` and `remove_edge` logic from ~8 lines dow
 
 I was actually surprised that this assignment took less time than our previous ones (though it was still time intensive). Since we finished early, we had the chance to discuss how we might apply this approach to DNA and even ancient DNA assembly.
 
+## Other member(Jacque Caldwell)
+Our skills seemed to mesh.   I was able to describe how we were going to refer to the graph with nodes and edges, and she just got it.  We did get her going with her git "tab" on Explorer, and that made her life much simpler than having to do command line git commands.   We did forget to reverse the string in print_eulerian_walk, but that was easily fixed, and should appear in our final solution.  
+
+I struggled a bit with list(strings) implementation, continuing to see set errors that seem to pop up at random times, this seems to be something to do with the interpreted nature of python.
+
+After the project was completed, I did read in a DNA sequence, and attempt to use it with our list -- despite some initial "recursion limit level being reached", I was able to prove that given the start node sequences of 1000 characters could go down to a kmer length of about 7 before having issues not being able to recreate the original string.
 ## Other member
 Working with Nikaela, we were able to hit the ground running, I had started implementing early, however, she was able to point out how some of
 the functions could be done easier through the defaultdict class structure, so we changed up the code a bit.  
