@@ -29,9 +29,7 @@ We used Python to represent the graph with dictionaries and performed a recursiv
   - Always check if a node still has edges before continuing.
 
 ```
-Some pseudocode here
 ```
-
 # Successes
 - Clarified De Bruijn graph principles through early team discussions.  
 - Simplified `add_edge` and `remove_edge` to single-line operations by using **`defaultdict(list)`**.  
@@ -64,6 +62,16 @@ Our skills seemed to mesh.   I was able to describe how we were going to refer t
 I struggled a bit with list(strings) implementation, continuing to see set errors that seem to pop up at random times, this seems to be something to do with the interpreted nature of python.
 
 After the project was completed, I did read in a DNA sequence, and attempt to use it with our list -- despite some initial "recursion limit level being reached", I was able to prove that given the start node sequences of 1000 characters could go down to a kmer length of about 7 before having issues not being able to recreate the original string.
+## Other member
+Working with Nikaela, we were able to hit the ground running, I had started implementing early, however, she was able to point out how some of
+the functions could be done easier through the defaultdict class structure, so we changed up the code a bit.  
+
+I did struggle with some python code early that was not allowing me to do a .append on a Dict(list()), it told me that it couldn't do a .append on 
+a "set" type (it seemed to be telling me that it didn't know what my variable really was).  Changing the parameter to my function to define the parameter did not help, but it started working after I attempted to do an isinstanceof right before the .append.  
+
+I also struggled to figure out why our graph printed out looked like the provided one, however, the provided lambda command would not print out our final Eulerian walk correctly.  I re-wrote it slightly and contacted Marcus -- not sure what is going on there.
+
+Did some thinking about trying some of the DNA segments that were in last weeks project in order to figure out if I could see how increasing kmer length would improve output.
 
 # Generative AI Appendix
 As per the syllabus
