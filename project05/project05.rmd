@@ -216,8 +216,39 @@ def traceback(seq1, seq2, traceback_matrix, maximum_position):
                 ...
             
     '''
-    pass
-            
+    
+    GAP = "-"
+    
+    i, j = maximum_position[0], maximum_position[1]
+    current_move = traceback_matrix[i][j]
+    
+    aligned_seq1 = ""
+    aligned_seq2 = ""
+    
+    while current_move != 0: # END
+      if current_move == 1: # DIAG
+        aligned_seq1 += seq1[i-1]
+        aligned_seq2 += seq2[j-1]
+        offset = (-1,-1)
+      elif current_move == 2: # UP
+        aligned_seq1 += seq1[i-1]
+        aligned_seq2 += GAP
+        offset = (-1,0)
+      elif current_move == 3: # LEFT
+        aligned_seq1 += GAP
+        aligned_seq2 += seq2[j-1]
+        offset = (0,-1)
+      
+      i += offset[0]
+      j += offset[1]
+      
+      current_move = traceback_matrix[i][j]
+    
+    # Reverse the strings
+    aligned_seq1 = aligned_seq1[::-1]
+    aligned_seq2 = aligned_seq2[::-1]
+    
+    return aligned_seq1, aligned_seq2
 ```
 
 ```{python}
@@ -256,7 +287,15 @@ def smith_waterman(seq1, seq2, match=1, mismatch=-1, gap=-1):
     max_pos = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)  # np.unravel_index() finds the position (i, j) of that maximum
     # np.argmax() finds the index of the max value (but as a single number)
     # unravel_index converts that single number into (row, col) format
+    
+    aligned_seq1, aligned_seq2 = traceback(seq1, seq2, traceback_matrix, (6,7))
+    
+    return aligned_seq1, aligned_seq2, score_matrix
+    
 ```
+
+
+
 
 ```{python, eval=FALSE}
 # Example from slides
@@ -264,7 +303,6 @@ seq1 = 'TACTTAG'
 seq2 = 'CACATTAA'
 
 aligned_seq1, aligned_seq2, score_matrix = smith_waterman(seq1,seq2)
-
 print (aligned_seq1)
 print (aligned_seq2)
 print (score_matrix)
