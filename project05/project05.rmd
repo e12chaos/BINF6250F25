@@ -1,5 +1,6 @@
 ---
 title: "Project 05: Pairwise Alignments"
+author: "Nikaela Aitken and Brooks Groharing"
 date: "`r format(Sys.time(), '%Y%m%d')`"
 output:
   github_document:
@@ -149,7 +150,40 @@ def cal_score(matrix, seq1, seq2, i, j, match, mismatch, gap):
         traceback = maximum direction or end
         
     '''
-    pass
+    #Step 1: Initialize matrix with zeros
+    # Matrix should be (len(seq1)+1) rows by (len(seq2)+1)columns
+    #rows = len(seq1) + 1 # We add + 1 because we need an extra row at the top for the starting position
+    #columns = len(seq2)+ 1
+    #np.zeros() = numpy function that creates a grid filled with zeros
+    #matrix = np.zeros((rows, cols), dtype=int) #data type integer  we want whole numbers not decimals    ##### DON'T create matrix here - it's already created! we are Just calculating the score for position (i, j)
+    
+    
+    if seq1[i-1] == seq2[j-1]:  #The matrix is one bigger than the sequence (i/j-1)
+        diag_score = matrix[i-1][j-1] + match
+    else:
+        # Characters don't match
+        diag_score = matrix[i-1][j-1] + mismatch
+    #Step 2: Calculate up score (coming from above = gap in seq2)
+    up_score = matrix[i-1][j] + gap
+    
+    # Step 3: Calculate left score (coming from left = gap in seq1)
+    left_score = matrix[i][j-1] + gap
+    
+    # Step 4: Smith-Waterman - take max including 0
+    score = max(diag_score, up_score, left_score, 0)
+    
+    # Step 5: Determine traceback direction
+    # Check which one gave us the maximum score
+    if score == 0:
+        traceback_direction = 0  # END
+    elif score == diag_score:
+        traceback_direction = 1  # DIAG
+    elif score == up_score:
+        traceback_direction = 2  # UP
+    elif score == left_score:
+        traceback_direction = 3  # LEFT
+    
+    return score, traceback_direction
     
 ```
 
@@ -202,7 +236,26 @@ def smith_waterman(seq1, seq2, match=1, mismatch=-1, gap=-1):
         aligned_seq2 (str)
         score_matrix (numpy array): scoring matrix
     '''
-    pass
+    # Step 1: Initialize matrix with zeros
+    # Matrix should be (len(seq1)+1) rows by (len(seq2)+1)columns
+    rows = len(seq1) + 1  # We add + 1 because we need an extra row at the top for the starting position
+    columns = len(seq2) + 1
+    # np.zeros() = numpy function that creates a grid filled with zeros
+    score_matrix = np.zeros((rows, columns), dtype=int)  # data type integer we want whole numbers not decimals
+    traceback_matrix = np.zeros((rows, columns), dtype=int)  # Matrix to hold direction
+    
+    # Step 2: Fill the matrices using cal_score 
+    for i in range(1, rows):  # Start at 1, skip row 0
+        for j in range(1, columns):  # Start at 1, skip column 0
+            score, direction = cal_score(score_matrix, seq1, seq2, i, j, match, mismatch, gap)
+            score_matrix[i][j] = score
+            traceback_matrix[i][j] = direction
+    
+    # Step 3: Find maximum score position
+    max_score = np.max(score_matrix)  # np.max() finds the maximum value in the matrix
+    max_pos = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)  # np.unravel_index() finds the position (i, j) of that maximum
+    # np.argmax() finds the index of the max value (but as a single number)
+    # unravel_index converts that single number into (row, col) format
 ```
 
 ```{python, eval=FALSE}
