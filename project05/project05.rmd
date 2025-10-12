@@ -217,11 +217,6 @@ def traceback(seq1, seq2, traceback_matrix, maximum_position):
             
     '''
     
-    END = 0
-    DIAG = 1
-    UP = 2
-    LEFT = 3
-    
     GAP = "-"
     
     i, j = maximum_position[0], maximum_position[1]
@@ -230,27 +225,29 @@ def traceback(seq1, seq2, traceback_matrix, maximum_position):
     aligned_seq1 = ""
     aligned_seq2 = ""
     
-    while current_move != END:
-      print(current_move)
-      if current_move == DIAG:
+    while current_move != 0: # END
+      if current_move == 1: # DIAG
         aligned_seq1 += seq1[i-1]
         aligned_seq2 += seq2[j-1]
         offset = (-1,-1)
-      elif current_move == UP:
-        aligned_seq1 += GAP
-        aligned_seq2 += seq2[j-1]
-        offset = (-1,0)
-      elif current_move == LEFT:
+      elif current_move == 2: # UP
         aligned_seq1 += seq1[i-1]
         aligned_seq2 += GAP
+        offset = (-1,0)
+      elif current_move == 3: # LEFT
+        aligned_seq1 += GAP
+        aligned_seq2 += seq2[j-1]
         offset = (0,-1)
-      else:
-        print("ASDFASDFASDFADSFASDF")
+      
       i += offset[0]
       j += offset[1]
       
       current_move = traceback_matrix[i][j]
-      
+    
+    # Reverse the strings
+    aligned_seq1 = aligned_seq1[::-1]
+    aligned_seq2 = aligned_seq2[::-1]
+    
     return aligned_seq1, aligned_seq2
 ```
 
@@ -291,14 +288,7 @@ def smith_waterman(seq1, seq2, match=1, mismatch=-1, gap=-1):
     # np.argmax() finds the index of the max value (but as a single number)
     # unravel_index converts that single number into (row, col) format
     
-    print(score_matrix)
-    print(traceback_matrix)
-    print(max_pos)
-    
     aligned_seq1, aligned_seq2 = traceback(seq1, seq2, traceback_matrix, (6,7))
-    
-    print(aligned_seq1)
-    print(aligned_seq2)
     
     return aligned_seq1, aligned_seq2, score_matrix
     
@@ -313,10 +303,9 @@ seq1 = 'TACTTAG'
 seq2 = 'CACATTAA'
 
 aligned_seq1, aligned_seq2, score_matrix = smith_waterman(seq1,seq2)
-
-#print (aligned_seq1)
-#print (aligned_seq2)
-#print (score_matrix)
+print (aligned_seq1)
+print (aligned_seq2)
+print (score_matrix)
 ```
 
 Expected output:
