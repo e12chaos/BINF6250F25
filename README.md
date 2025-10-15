@@ -14,23 +14,23 @@ The **Smith-Waterman algorithm** is a  common dynamic programming methods used f
 
 # Purpose: Calculate the score for each cell in the alignment matrix
 def cal_score
-    Step 1: Calculate diagonal score
+    #Step 1: Calculate diagonal score
     # Compare seq1[i-1] with seq2[j-1]
     if seq1[i-1] == seq2[j-1]:
         diag_score = matrix[i-1][j-1] + match
     else:
         diag_score = matrix[i-1][j-1] + mismatch
 
-    Step 2: Calculate up score (gap in seq2)
+    #Step 2: Calculate up score (gap in seq2)
     up_score = matrix[i-1][j] + gap
 
-    Step 3: Calculate left score (gap in seq1)
+    #Step 3: Calculate left score (gap in seq1)
     left_score = matrix[i][j-1] + gap
 
-    Step 4: Smith-Waterman special — include 0
+    #Step 4: Smith-Waterman special — include 0
     score = max(diag_score, up_score, left_score, 0)
 
-    Step 5: Figure out which direction gave the max score
+    #Step 5: Figure out which direction gave the max score
     # This will be used later for traceback
     return score
 
@@ -38,11 +38,11 @@ def cal_score
 # Function: smith_waterman
 
 def smith_waterman
-    Step 1: Initialize matrices with zeros
-    Step 2: Fill the matrices using cal_score for each cell
-    Step 3: Find the position with the maximum score
-    Step 4: Traceback starting from that max position
-    Step 5: Return the aligned sequences and final alignment score
+    #Step 1: Initialize matrices with zeros
+    #Step 2: Fill the matrices using cal_score for each cell
+    #Step 3: Find the position with the maximum score
+    #Step 4: Traceback starting from that max position
+    # Step 5: Return the aligned sequences and final alignment score
 ```
 
 # Successes
