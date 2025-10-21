@@ -20,6 +20,11 @@ Put pseudocode in this box:
 
 - **Testing and debugging practice:** Developed small-scale test cases (like short artificial sequences) to validate functions independently before integration.
 
+- **Team coordination:** Able to coordinate with Allen via Microsoft Teams since our schedules didn’t align this week.
+
+- **Commenting and documentation:** Made sure to leave detailed comments throughout the code—both from previous notes and to help my partner easily follow my logic and implementation decisions.
+
+
 
 # Struggles
 
