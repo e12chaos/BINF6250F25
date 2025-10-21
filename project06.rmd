@@ -291,8 +291,7 @@ def get_min_distance(matrix):
     # Find the minimum value
     min_val = np.min(temp_matrix)
     
-    # Find the position of the minimum
-    # np.argmin gives the flattened index, unravel_index converts to (row, col)
+    # Find the position of the minimum: np.argmin gives the flattened index, unravel_index converts to (row, col)
     pos = np.unravel_index(np.argmin(temp_matrix), temp_matrix.shape)
     
     return min_val, pos
@@ -354,9 +353,6 @@ if __name__ == "__main__":
 ```
 
 
-
-
->>>>>>> 8dc3fc2eace62e0b4570507abdf53cd534fa771d
 
 
 
