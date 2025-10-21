@@ -281,23 +281,19 @@ def get_min_distance(matrix):
         pos (tuple): The (row, col) position of the smallest distance
     '''
     
-    # Step 1: Start with a very large minimum value; This helops to ensures any real distance will be smaller
-    min_val = float('inf')  # infinity
-    pos = (0, 0)  # placeholder position
+    # Create a copy of the matrix so we don't modify the original!
+    temp_matrix = matrix.copy()
     
-    #Step 2: Search through the matrix
-    n = matrix.shape[0]  # number of rows (same as columns for square matrix)
+    # Set diagonal to infinity so it won't be selected
+    # np.fill_diagonal sets all diagonal elements to a value
+    np.fill_diagonal(temp_matrix, np.inf)
     
-    for i in range(n):
-        for j in range(n):
-            # Step 3: Skip diagonal elements - since they will always be the best (0)
-            if i == j:
-                continue  # Skip to next iteration
-            
-            # Step 4: Check if this is the new minimum
-            if matrix[i, j] < min_val:
-                min_val = matrix[i, j]
-                pos = (i, j)
+    # Find the minimum value
+    min_val = np.min(temp_matrix)
+    
+    # Find the position of the minimum
+    # np.argmin gives the flattened index, unravel_index converts to (row, col)
+    pos = np.unravel_index(np.argmin(temp_matrix), temp_matrix.shape)
     
     return min_val, pos
 ```
@@ -361,5 +357,6 @@ if __name__ == "__main__":
 
 
 >>>>>>> 8dc3fc2eace62e0b4570507abdf53cd534fa771d
+
 
 
