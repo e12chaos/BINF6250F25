@@ -205,24 +205,68 @@ print(f"Identical sequences: {score}")  # Should be 1.0 cause its identical
 ```{python}
 def build_distance_matrix(sequences: Dict[str, str]) -> Tuple[np.ndarray, List[str]]:
     """Builds distance matrix using Smith-Waterman scores.
-
+    
     Args:
         sequences (Dict[str, str]): Dictionary of HIV RT sequences
-
+                                   Keys = sequence IDs (like 'AAN41462.1')
+                                   Values = actual sequences (protein strings)
+    
     Returns:
-        Tuple[np.ndarray, List[str]]: Distance matrix and list of sequence IDs
-
-    Examples:
+        Tuple[np.ndarray, List[str]]: 
+            - distance_matrix: n x n numpy array of distances
+            - seq_ids: list of sequence IDs in same order as matrix indices
+    
+    Example:
         >>> seqs = read_fasta("lafayette_SARS_RT.fasta")
         >>> mat, ids = build_distance_matrix(seqs)
-        >>> mat[0:3, 0:3]  # Show 3x3 slice of distance matrix
-        array([[0.000, 0.004, 0.012],
-              [0.004, 0.000, 0.012],
-              [0.012, 0.012, 0.000]])
-        >>> len(ids)  # Number of sequences
-        19
+        >>> mat.shape  # Should be (19, 19) if 19 sequences
+        >>> mat[0, 0]  # Should be 0.0 (diagonal)
     """
-    pass
+    
+    # STEP 1: Extract sequence IDs as a list because We need consistent ordering for matrix indices
+    # dict.keys() order is preserved 
+    seq_ids = list(sequences.keys())
+    n = len(seq_ids)  # Total number of sequences
+    
+    print(f"Building distance matrix for {n} sequences...")
+    
+    #STEP 2: Initialize distance matrix and create n x n matrix filled with zeros
+    # Distance from any sequence to itself = 0 (diagonal stays 0)
+    distance_matrix = np.zeros((n, n))
+    
+    #  STEP 3: Fill the matrix with pairwise distances. Strategy: we will Only calculate upper triangle (j > i) for efficiency. Then copy to lower triangle since distance is symmetric
+    
+    for i in range(n):
+        # For each sequence i, compare to all sequences after it (j > i)
+        for j in range(i + 1, n):  # Start at i+1 to skip diagonal and already-calculated pairs
+            
+            # Get the actual sequence strings from the   dictionary
+            seq1 = sequences[seq_ids[i]]
+            seq2 = sequences[seq_ids[j]]
+            
+            # Calculate similarity score using Smith-Waterman(Returns a value between 0 (no similarity) and 1 (identical))
+            similarity = smith_waterman(seq1, seq2)
+            
+            # Similarity --> Distance
+            # Similarity scale: 1.0 = identical, 0.0 = completely different
+            # Distance scale:   0.0 = identical, 1.0 = completely different
+            # Formula: distance = 1 - similarity
+            distance = 1 - similarity
+            
+            # Fill BOth positions because matrix is symmetric
+            # distance[i,j] = distance[j,i]
+            distance_matrix[i, j] = distance
+            distance_matrix[j, i] = distance
+        
+        # Optional: Progress indicator for large datasets
+        if (i + 1) % 5 == 0:
+            print(f"  Processed {i + 1}/{n} sequences...")
+    
+    print("Distance matrix complete!")
+    
+    # STEP 4: Return both the matrix and the sequence IDs n(seq_ids tells us which sequence corresponds to which row/column)
+    # Example: seq_ids[0] = 'AAN41462.1' means row 0 is that sequence
+    return distance_matrix, seq_ids 
 ```
 
 ```{python}
@@ -317,4 +361,5 @@ if __name__ == "__main__":
 
 
 >>>>>>> 8dc3fc2eace62e0b4570507abdf53cd534fa771d
+
 
