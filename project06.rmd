@@ -97,6 +97,7 @@ This was previously implemented. Feel free to import if you know how...or Copy &
 
 ```{python}
 def read_fasta(filename: str) -> Dict[str, str]:
+def read_fasta(filename: str) -> Dict[str, str]:
     """Reads sequences from FASTA file.
 
     Args:
@@ -110,7 +111,18 @@ def read_fasta(filename: str) -> Dict[str, str]:
         >>> len(seqs) > 0
         True
     """
-    pass
+    fasta_dict = dict()
+    with open(filename,"r") as fasta_file:
+        for line in fasta_file:
+            if line.startswith(">"):
+                section = line.split("|")
+                accession_number = section[3]
+                fasta_dict[accession_number]= ""
+            else:
+                fasta_dict[accession_number] += line.strip()
+    return fasta_dict
+  
+print(read_fasta("lafayette_SARS_RT.fasta"))
 ```
 
 ```{python}
@@ -235,4 +247,5 @@ if __name__ == "__main__":
     # Plot tree
     plot_tree(tree)
 ```
+
 
