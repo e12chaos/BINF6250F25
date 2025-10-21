@@ -188,15 +188,15 @@ def smith_waterman(
 
 ```{python}
 # Test example to see if this will work 
-seq1 = 'TACTTAG'
-seq2 = 'CACATTAA'
+#seq1 = 'TACTTAG'
+#seq2 = 'CACATTAA'
 
-score = smith_waterman(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty=-1)
-print(f"Normalized similarity: {score}")
+#score = smith_waterman(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty=-1)
+#print(f"Normalized similarity: {score}")
 
 # Test identical sequences
-score = smith_waterman("ACGT", "ACGT", match_score=2.0, mismatch_penalty=-1.0, gap_penalty=-1.0)
-print(f"Identical sequences: {score}")  # Should be 1.0 cause its identical 
+#score = smith_waterman("ACGT", "ACGT", match_score=2.0, mismatch_penalty=-1.0, gap_penalty=-1.0)
+#print(f"Identical sequences: {score}")  # Should be 1.0 cause its identical 
 ```
 
 
@@ -351,6 +351,7 @@ if __name__ == "__main__":
     # Plot tree
     plot_tree(tree)
 ```
+
 
 
 
