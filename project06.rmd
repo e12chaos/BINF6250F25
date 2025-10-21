@@ -1,6 +1,6 @@
 ---
 title: "Project 06: Hierarchical Clustering"
-author: "Your Name"
+author: "Nikaela Aitken & Allen Benavidez"
 date: "`r format(Sys.time(), '%Y%m%d')`"
 output:
   github_document:
@@ -12,6 +12,8 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=TRUE)
 library('reticulate')
+#use_condaenv("ete_env", required = TRUE) # for python v3.12
+#py_config()
 ```
 
 ---
@@ -27,10 +29,13 @@ library('reticulate')
 ## Imports
 You will need to install a package called `ete3` for this project. You can do this by the command `conda install ete3`.
 
+
+
+
 ```{python}
 from typing import List, Tuple, Dict
 import numpy as np
-import ete3
+#import ete3
 ```
 
 ---
@@ -151,8 +156,50 @@ def smith_waterman(
         >>> smith_waterman(seq1, seq2)
         1.0
     """
-    pass
+    # Adapted from project05 -Nikaela and Brooks - trying to make comments of the changes and adaptations 
+    
+    #From project05: Setup - UNCHANGED
+    # Calculate matrix dimensions (add 1 for the empty string row/column)
+    rows = len(sequence1) + 1
+    cols = len(sequence2) + 1
+    matrix = np.zeros((rows, cols))
+    max_score = 0
+    
+    #From project05: Fill matrix (simplified; Same double loop structure, but no traceback_matrix)
+    for i in range(1, rows):
+        for j in range(1, cols):
+            # Your cal_score logic, inlined
+            if sequence1[i-1] == sequence2[j-1]:
+                match = matrix[i-1, j-1] + match_score
+            else:
+                match = matrix[i-1, j-1] + mismatch_penalty
+            
+            delete = matrix[i-1, j] + gap_penalty
+            insert = matrix[i, j-1] + gap_penalty
+            
+            matrix[i, j] = max(0, match, delete, insert)
+            max_score = max(max_score, matrix[i, j])
+    
+    # NEW FOR PROJECT 06: Normalize
+    max_possible = min(len(sequence1), len(sequence2)) * match_score
+    return max_score / max_possible if max_possible > 0 else 0.0
 ```
+
+```{python}
+# Test example to see if this will work 
+seq1 = 'TACTTAG'
+seq2 = 'CACATTAA'
+
+score = smith_waterman(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty=-1)
+print(f"Normalized similarity: {score}")
+
+# Test identical sequences
+score = smith_waterman("ACGT", "ACGT", match_score=2.0, mismatch_penalty=-1.0, gap_penalty=-1.0)
+print(f"Identical sequences: {score}")  # Should be 1.0 cause its identical 
+```
+
+
+
 
 ```{python}
 def build_distance_matrix(sequences: Dict[str, str]) -> Tuple[np.ndarray, List[str]]:
@@ -247,5 +294,6 @@ if __name__ == "__main__":
     # Plot tree
     plot_tree(tree)
 ```
+
 
 
