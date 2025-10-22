@@ -333,6 +333,41 @@ def neighbor_joining(
     node_counter = 0
     
     print(f"Starting Neighbor-Joining with {n} sequences...")
+
+    #step 2: main loop that  Continues until only 2 nodes remain
+    # Each iteration joins 2 nodes into 1, so we need (n-2) iterations
+    
+    while n > 2:
+        print(f"  Iteration {len(labels) - n + 1}: {n} active nodes")
+        
+        # stp 3: Calculate Q-Matrix  Q-matrix corrects distances to account for tree structure
+       
+        
+        # Formula: Q(i,j) = (n-2)*d(i,j) - sum_i - sum_j
+        # Where sum_i = sum of all distances from node i
+        
+        Q = np.zeros((n, n))
+        
+        # Calculate Q for each pair of nodes
+        for i in range(n):
+            for j in range(n):
+                if i != j:  # skip diagonal
+                    # Sum of all distances from node i to all other nodes
+                    sum_i = np.sum(dist[i, :])
+                    # Sum of all distances from node j to all other nodes
+                    sum_j = np.sum(dist[j, :])
+                    # Q-matrix formula
+                    Q[i, j] = (n - 2) * dist[i, j] - sum_i - sum_j
+
+         # STEP 4: Find Minimum Q(i,j): The pair with minimum Q value are the "neighbors" to join
+        
+        min_q, (i, j) = get_min_distance(Q)
+        
+        # Ensure i < j for consistency (makes indexing easier later)
+        if i > j:
+            i, j = j, i
+        
+        print(f"    Joining nodes [{i}] {nodes[i]} and [{j}] {nodes[j]}")
 ```
 
 ```{python}
@@ -363,6 +398,7 @@ if __name__ == "__main__":
     # Plot tree
     plot_tree(tree)
 ```
+
 
 
 
