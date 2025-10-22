@@ -320,7 +320,19 @@ def neighbor_joining(
         >>> tree.count(",")  # Number of separators in tree
         18
     """
-    pass
+     #Step 1: INITIALIZATION: We need copies so we don't modify the originals
+    
+    dist = distance_matrix.copy()  #Distance matrix that we'll modify
+    nodes = labels.copy()  # List of active nodes starts with all sequences
+    n = len(nodes)  #Current number of active nodes
+    
+    # Tree structure: dictionary where keys are node names
+    tree = {}
+    
+    # Counter for creating unique internal node names
+    node_counter = 0
+    
+    print(f"Starting Neighbor-Joining with {n} sequences...")
 ```
 
 ```{python}
@@ -351,6 +363,7 @@ if __name__ == "__main__":
     # Plot tree
     plot_tree(tree)
 ```
+
 
 
 
