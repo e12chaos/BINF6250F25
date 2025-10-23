@@ -310,21 +310,13 @@ def neighbor_joining(
 
     Returns:
         str: Newick format tree string
-
-    Examples:
-        >>> seqs = read_fasta("lafayette_SARS_RT.fasta")
-        >>> mat, ids = build_distance_matrix(seqs)
-        >>> tree = neighbor_joining(mat, ids)
-        >>> tree.startswith("((DM1:0.002,DM2:0.002)")  # Start of Newick string
-        True
-        >>> tree.count(",")  # Number of separators in tree
-        18
     """
-     #Step 1: INITIALIZATION: We need copies so we don't modify the originals
+   
+    #We need copies so we don't modify the originals
     
-    dist = distance_matrix.copy()  #Distance matrix that we'll modify
-    nodes = labels.copy()  # List of active nodes starts with all sequences
-    n = len(nodes)  #Current number of active nodes
+    dist = distance_matrix.copy()  # Distance matrix that we'll modify
+    nodes = labels.copy()  # List of active nodes (starts with all sequences)
+    n = len(nodes)  # Current number of active nodes
     
     # Tree structure: dictionary where keys are node names
     tree = {}
@@ -332,13 +324,14 @@ def neighbor_joining(
     # Counter for creating unique internal node names
     node_counter = 0
     
-    print(f"Starting Neighbor-Joining with {n} sequences...")
-
+    #print(f"Starting Neighbor-Joining with {n} sequences...")
+    
+   
     #step 2: main loop that  Continues until only 2 nodes remain
     # Each iteration joins 2 nodes into 1, so we need (n-2) iterations
     
     while n > 2:
-        print(f"  Iteration {len(labels) - n + 1}: {n} active nodes")
+        
         
         # stp 3: Calculate Q-Matrix  Q-matrix corrects distances to account for tree structure
        
@@ -351,15 +344,16 @@ def neighbor_joining(
         # Calculate Q for each pair of nodes
         for i in range(n):
             for j in range(n):
-                if i != j:  # skip diagonal
+                if i != j:  # Skip diagonal
                     # Sum of all distances from node i to all other nodes
                     sum_i = np.sum(dist[i, :])
                     # Sum of all distances from node j to all other nodes
                     sum_j = np.sum(dist[j, :])
                     # Q-matrix formula
                     Q[i, j] = (n - 2) * dist[i, j] - sum_i - sum_j
-
-         # STEP 4: Find Minimum Q(i,j): The pair with minimum Q value are the "neighbors" to join
+        
+        
+        #Find Minimum Q(i,j): The pair with minimum Q value are the "neighbors" to join
         
         min_q, (i, j) = get_min_distance(Q)
         
@@ -367,9 +361,185 @@ def neighbor_joining(
         if i > j:
             i, j = j, i
         
-        print(f"    Joining nodes [{i}] {nodes[i]} and [{j}] {nodes[j]}")
+       
+        
+       
+        #  Calculate Branch Lengths
+        
+        # How far is each node from their common parent?
+        # Formula accounts for different evolutionary rates
+        
+        sum_i = np.sum(dist[i, :])
+        sum_j = np.sum(dist[j, :])
+        
+        # Branch length from new node to node i
+        # Formula: d_i = d(i,j)/2 + (sum_i - sum_j)/(2*(n-2))
+        branch_i = dist[i, j] / 2 + (sum_i - sum_j) / (2 * (n - 2))
+        
+        # Branch length from new node to node j
+        branch_j = dist[i, j] - branch_i
+        
+        # Biological constraint: branch lengths can't be negative
+        # (Sometimes calculation gives small negative due to rounding)
+        branch_i = max(0, branch_i)
+        branch_j = max(0, branch_j)
+        
+        
+        
+        
+        #Create New Internal Node
+        # This node represents the common ancestor of nodes i and j
+        
+        new_node_name = f"Node{node_counter}"
+        node_counter += 1
+        
+        # Store the tree structure. This new node connects to i and j with the calculated branch lengths
+        tree[new_node_name] = {
+            nodes[i]: branch_i,
+            nodes[j]: branch_j
+        }
+        
+        
+        #  we need to  calculate Distances to New Node
+        # For all other nodes k, what's the distance to our new node?
+        # Formula: d(new, k) = (d(i,k) + d(j,k) - d(i,j)) / 2
+        # This is the average distance minus the join distance
+        
+        new_distances = np.zeros(n - 2)  # One less because we're removing 2
+        
+        k_idx = 0  # Index for new_distances array
+        for k in range(n):
+            # Skip the nodes we're joining
+            if k != i and k != j:
+                new_distances[k_idx] = (dist[i, k] + dist[j, k] - dist[i, j]) / 2
+                k_idx += 1
+        
+        
+        #Update Distance Matrix
+        
+        # Remove rows/columns for i and j, add row/column for new node
+        # we must  Delete larger index first! Otherwise indices shift
+        
+        # Remove rows for j (larger) then i (smaller)
+        dist = np.delete(dist, [j, i], axis=0)
+        # Remove columns for j then i
+        dist = np.delete(dist, [j, i], axis=1)
+        
+        # Add new row (distances from new node to all others)
+        dist = np.vstack([dist, new_distances])
+        
+        # Add new column (same distances, plus 0 for diagonal)
+        # Need to append 0 for the diagonal element
+        new_col = np.append(new_distances, 0).reshape(-1, 1)
+        dist = np.hstack([dist, new_col])
+        # Remove the two nodes we joined, add the new node
+        
+        # Remove larger index first to avoid shifting problems
+        nodes.pop(j)
+        nodes.pop(i)
+        
+        # Add the new internal node
+        nodes.append(new_node_name)
+        
+        # Update count
+        n = len(nodes)
+    
+    
+    #   terminate and  join Last Two Nodes
+    # When only 2 nodes remain, create the root and join them
+    
+    #print(f"  Final join: {nodes[0]} and {nodes[1]}")
+    
+    # The distance between the final two nodes
+    final_distance = dist[0, 1]
+    
+    # Create the root node
+    final_node_name = f"Node{node_counter}"
+    tree[final_node_name] = {
+        nodes[0]: final_distance / 2,
+        nodes[1]: final_distance / 2
+    }
+    
+    
+    # build Newick strin
+   
+  
+    
+    def build_newick(node_name):
+        """Recursively build Newick string from tree dictionary.
+        
+        Args:
+            node_name: Current node to process
+            
+        Returns:
+            Newick string for this subtree
+        """
+        # If this node isn't in tree dict, it's a leaf (sequence)
+        if node_name not in tree:
+            return node_name
+        
+        # Recursive case: This is an internal node with children
+        children = tree[node_name]
+        child_strings = []
+        
+        # Build Newick string for each child
+        for child_name, branch_length in children.items():
+            # Recursively get the Newick string for the child
+            child_newick = build_newick(child_name)
+            # Add the branch length
+            child_strings.append(f"{child_newick}:{branch_length:.6f}")
+        
+        #Combine the children, but the doll back together: (child1:len1,child2:len2)
+        return f"({','.join(child_strings)})"
+    
+    # Start from the root and build the entire tree
+    newick_tree = build_newick(final_node_name) + ";"
+    
+    
+    
+    return newick_tree
 ```
+```{python}
 
+
+ ### testing and print results 
+#  Run Neighbor-Joining
+print(" Constructing phylogenetic tree")
+
+tree = neighbor_joining(dist_matrix, seq_ids)
+print()
+
+# Analyze results
+
+print("RESULTS")
+
+print(f"  Tree construction complete!")
+print(f"  Tree string length: {len(tree)} characters")
+print(f"  Number of commas: {tree.count(',')} (= {len(sequences)-1} internal branches)")
+print(f"  Number of colons: {tree.count(':')} (= branch length indicators)")
+print()
+
+# Show beginning of tree
+print("First 1000 characters of Newick tree:")
+print(tree[:1000] + "..." if len(tree) > 1000 else tree)
+print()
+
+# Validate tree structure
+print("Tree validation:")
+print(f" Ends with semicolon : {tree.endswith(';')}")
+print(f"   Starts with parenthesis: {tree.startswith('(')}")
+print(f"   Balanced parentheses: {tree.count('(') == tree.count(')')}")
+print()
+
+print("=" * 70)
+print("ANALYSIS COMPLETE!!!! omg it worked!!!")
+print("=" * 70)
+print()
+print("Next steps:")
+print("  1. Copy the Newick string above")
+print("  2. Visualize at: https://etetoolkit.org/treeview/")
+
+```
 ```{python}
 def plot_tree(newick_tree: str) -> None:
     """Plots phylogenetic tree using ete3.
@@ -398,6 +568,7 @@ if __name__ == "__main__":
     # Plot tree
     plot_tree(tree)
 ```
+
 
 
 
