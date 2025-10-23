@@ -7,7 +7,40 @@ This project implements a Neighbor-Joining (NJ) algorithm for constructing phylo
 Put pseudocode in this box:
 
 ```
+fucntion read_fasta(filename:fasta file)
+    initialize a dictionary
+    open fasta file and iterate through
+    
+    if line starts with ">" then grab accession number (sequence ID) and 
+    add as key to dictionary. 
+    If line does not start with ">" then add sequence lines to the current accession
+    number as a value
+    
+function smith_waterman
+    calculate the matrix dimensions
+    fill matrix with scores
+    normalize the scores
 
+function build_distance_matrix
+    create sequence id list
+    initialize matrix for distances
+    fill distance matrix with similarity scores between sequences
+    
+function get_min_distances
+    create dictionary
+    ignore diagonal values
+    find position and value of minimum value in matrix
+    
+function neighbor_joining
+    Initialize - Set up data structures
+    Main Loop - Repeat until 2 nodes left
+    Q-Matrix - Calculate corrected distances
+    Find Minimum - Identify closest pair
+    Branch Lengths - Calculate how far each node is from their parent
+    Update Matrix - Merge nodes and recalculate distances
+    Build Newick - Convert tree structure to string format
+    
+    
 ```
 
 # Successes
@@ -49,7 +82,13 @@ Also I still suck at GitHub. I somehow got my discovery environment out of sync 
 Side note: I liked that we were able to use a part of our code from the last assignment, I liked building on that.
 
 ## Other member
-Other members' reflections on the project
+This was definitely a difficult assignment. Understanding the process for neighbor joining took some
+extra research outside of class. It took a while to write the pseudocode since getting a good grip
+on understanding took a while. I did run into some issues when attempting to write the neighbor joining
+function where I was unable to correctly update the nodes in my version. My partner was successfully able
+to update the nodes and so we went along with here version of the function. As I am stillimproving on my 
+code its interesting to be exposed to different scenarios for learning. This project felt much math heavier
+than other projects so I struggled to fully translate the process into code.
 
 # Generative AI Appendix
 ChatGPT (GPT-5) was used for: Refining markdown formatting and documentation structure along with providing feedback on readability and logical organization
