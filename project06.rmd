@@ -223,18 +223,18 @@ def build_distance_matrix(sequences: Dict[str, str]) -> Tuple[np.ndarray, List[s
         >>> mat[0, 0]  # Should be 0.0 (diagonal)
     """
     
-    # STEP 1: Extract sequence IDs as a list because We need consistent ordering for matrix indices
+    # first we need to  extract sequence IDs as a list because We need consistent ordering for matrix indices
     # dict.keys() order is preserved 
     seq_ids = list(sequences.keys())
     n = len(seq_ids)  # Total number of sequences
     
-    print(f"Building distance matrix for {n} sequences...")
+   
     
-    #STEP 2: Initialize distance matrix and create n x n matrix filled with zeros
+    #Initialize distance matrix and create n x n matrix filled with zeros
     # Distance from any sequence to itself = 0 (diagonal stays 0)
     distance_matrix = np.zeros((n, n))
     
-    #  STEP 3: Fill the matrix with pairwise distances. Strategy: we will Only calculate upper triangle (j > i) for efficiency. Then copy to lower triangle since distance is symmetric
+    #   Fill the matrix with pairwise distances. Strategy: we will Only calculate upper triangle (j > i) for efficiency. Then copy to lower triangle since distance is symmetric
     
     for i in range(n):
         # For each sequence i, compare to all sequences after it (j > i)
@@ -258,14 +258,9 @@ def build_distance_matrix(sequences: Dict[str, str]) -> Tuple[np.ndarray, List[s
             distance_matrix[i, j] = distance
             distance_matrix[j, i] = distance
         
-        # Optional: Progress indicator for large datasets
-        if (i + 1) % 5 == 0:
-            print(f"  Processed {i + 1}/{n} sequences...")
+   
     
-    print("Distance matrix complete!")
-    
-    # STEP 4: Return both the matrix and the sequence IDs n(seq_ids tells us which sequence corresponds to which row/column)
-    # Example: seq_ids[0] = 'AAN41462.1' means row 0 is that sequence
+    # Return both the matrix and the sequence IDs n(seq_ids tells us which sequence corresponds to which row/column)
     return distance_matrix, seq_ids 
 ```
 
@@ -568,6 +563,7 @@ if __name__ == "__main__":
     # Plot tree
     plot_tree(tree)
 ```
+
 
 
 
