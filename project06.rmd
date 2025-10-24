@@ -1,0 +1,575 @@
+
+---
+title: "Project 06: Hierarchical Clustering"
+author: "Nikaela Aitken & Allen Benavidez"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+library('reticulate')
+#use_condaenv("ete_env", required = TRUE) # for python v3.12
+#py_config()
+```
+
+---
+
+## Learning Objectives
+
+1. Implement a distance-based phylogeny neighbor joining algorithm
+1. Understanding of hierarchical clustering
+1. Manipulation of arrays and lists in Python
+
+---
+
+## Imports
+You will need to install a package called `ete3` for this project. You can do this by the command `conda install ete3`.
+
+
+
+
+```{python}
+from typing import List, Tuple, Dict
+import numpy as np
+#import ete3
+```
+
+---
+
+## Background
+
+Today we will implement a distance-based phylogenetic tree construction method using the Neighbor-Joining (NJ) algorithm and Smith-Waterman local alignment scores. Unlike UPGMA (Unweighted Pair Group Method using Arithmetic averages), NJ produces unrooted trees and does not assume a constant evolutionary rate across lineages, making it more biologically realistic for analyzing sequence relationships.
+
+We will use HIV-1 reverse transcriptase sequences to construct our phylogenetic tree. The Smith-Waterman algorithm will be used to generate pairwise local alignment scores, which will then be converted into distances for tree construction. This approach is particularly suitable for HIV sequence analysis as it:
+1. Handles sequence variations effectively through local alignment
+2. Accounts for potential rate heterogeneity across different viral strains
+3. Does not assume a molecular clock
+
+The ultimate output will be an unrooted phylogenetic tree representing the evolutionary relationships between the HIV-1 sequences, visualized using the ete3 library. This method provides insights into viral diversity and evolutionary patterns while avoiding the assumptions of simpler hierarchical clustering approaches.
+
+The key innovations of this implementation are:
+- Use of Smith-Waterman for sensitive local alignment scoring
+- Implementation of Neighbor-Joining for unrooted tree construction
+- More biologically realistic evolutionary model
+
+## Neighbor-Joining Algorithm
+
+**Input**: Distance matrix $D$ for $n$ sequences
+
+**Initialization**:
+- Let $n$ be the number of sequences
+- Assign each sequence $i$ to its own leaf node
+- Initialize tree $T$ with leaf nodes
+
+**Iteration**:
+While $n > 2$:
+1. Calculate Q-matrix where:
+   $Q(i,j) = (n-2)d(i,j) - \sum_{k=1}^n d(i,k) - \sum_{k=1}^n d(j,k)$
+
+2. Find pair $(i,j)$ with minimum $Q(i,j)$
+
+3. Calculate branch lengths:
+   $d_i = \frac{d(i,j) + (r_i - r_j)/(n-2)}{2}$
+   $d_j = d(i,j) - d_i$
+   where $r_i = \sum_{k=1}^n d(i,k)$
+
+4. Create new node $k$
+   - Add branches from $k$ to $i$ and $j$ with lengths $d_i$ and $d_j$
+
+5. Update distances to remaining nodes $x$:
+   $d(k,x) = \frac{d(i,x) + d(j,x) - d(i,j)}{2}$
+
+6. Remove nodes $i$ and $j$
+7. Add node $k$ to active nodes
+8. $n = n - 1$
+
+**Termination**:
+When $n = 2$ with remaining nodes $i$ and $j$:
+- Add final branch between $i$ and $j$ with length $d(i,j)$
+- Return unrooted tree $T$
+
+---
+
+## Distance metrics for comparing sequences
+
+### Smith-Waterman
+This was previously implemented. Feel free to import if you know how...or Copy & Paste.
+
+
+```{python}
+def read_fasta(filename: str) -> Dict[str, str]:
+def read_fasta(filename: str) -> Dict[str, str]:
+    """Reads sequences from FASTA file.
+
+    Args:
+        filename (str): Path to FASTA file containing HIV RT sequences
+
+    Returns:
+        Dict[str, str]: Dictionary mapping sequence IDs to sequences
+
+    Examples:
+        >>> seqs = read_fasta("lafayette_SARS_RT.fasta")
+        >>> len(seqs) > 0
+        True
+    """
+    fasta_dict = dict()
+    with open(filename,"r") as fasta_file:
+        for line in fasta_file:
+            if line.startswith(">"):
+                section = line.split("|")
+                accession_number = section[3]
+                fasta_dict[accession_number]= ""
+            else:
+                fasta_dict[accession_number] += line.strip()
+    return fasta_dict
+  
+print(read_fasta("lafayette_SARS_RT.fasta"))
+```
+
+```{python}
+def smith_waterman(
+    sequence1: str,
+    sequence2: str,
+    match_score: float = 2.0,
+    mismatch_penalty: float = -1.0,
+    gap_penalty: float = -1.0
+) -> float:
+    """Implements Smith-Waterman local alignment algorithm.
+
+    Args:
+        sequence1 (str): First HIV RT sequence
+        sequence2 (str): Second HIV RT sequence
+        match_score (float): Score for matching characters
+        mismatch_penalty (float): Penalty for mismatched characters
+        gap_penalty (float): Penalty for gaps
+
+    Returns:
+        float: Normalized similarity score between sequences
+
+    Examples:
+        >>> seq1 = "ACGT"
+        >>> seq2 = "ACGT"
+        >>> smith_waterman(seq1, seq2)
+        1.0
+    """
+    # Adapted from project05 -Nikaela and Brooks - trying to make comments of the changes and adaptations 
+    
+    #From project05: Setup - UNCHANGED
+    # Calculate matrix dimensions (add 1 for the empty string row/column)
+    rows = len(sequence1) + 1
+    cols = len(sequence2) + 1
+    matrix = np.zeros((rows, cols))
+    max_score = 0
+    
+    #From project05: Fill matrix (simplified; Same double loop structure, but no traceback_matrix)
+    for i in range(1, rows):
+        for j in range(1, cols):
+            # Your cal_score logic, inlined
+            if sequence1[i-1] == sequence2[j-1]:
+                match = matrix[i-1, j-1] + match_score
+            else:
+                match = matrix[i-1, j-1] + mismatch_penalty
+            
+            delete = matrix[i-1, j] + gap_penalty
+            insert = matrix[i, j-1] + gap_penalty
+            
+            matrix[i, j] = max(0, match, delete, insert)
+            max_score = max(max_score, matrix[i, j])
+    
+    # NEW FOR PROJECT 06: Normalize
+    max_possible = min(len(sequence1), len(sequence2)) * match_score
+    return max_score / max_possible if max_possible > 0 else 0.0
+```
+
+```{python}
+# Test example to see if this will work 
+#seq1 = 'TACTTAG'
+#seq2 = 'CACATTAA'
+
+#score = smith_waterman(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty=-1)
+#print(f"Normalized similarity: {score}")
+
+# Test identical sequences
+#score = smith_waterman("ACGT", "ACGT", match_score=2.0, mismatch_penalty=-1.0, gap_penalty=-1.0)
+#print(f"Identical sequences: {score}")  # Should be 1.0 cause its identical 
+```
+
+
+
+
+```{python}
+def build_distance_matrix(sequences: Dict[str, str]) -> Tuple[np.ndarray, List[str]]:
+    """Builds distance matrix using Smith-Waterman scores.
+    
+    Args:
+        sequences (Dict[str, str]): Dictionary of HIV RT sequences
+                                   Keys = sequence IDs (like 'AAN41462.1')
+                                   Values = actual sequences (protein strings)
+    
+    Returns:
+        Tuple[np.ndarray, List[str]]: 
+            - distance_matrix: n x n numpy array of distances
+            - seq_ids: list of sequence IDs in same order as matrix indices
+    
+    Example:
+        >>> seqs = read_fasta("lafayette_SARS_RT.fasta")
+        >>> mat, ids = build_distance_matrix(seqs)
+        >>> mat.shape  # Should be (19, 19) if 19 sequences
+        >>> mat[0, 0]  # Should be 0.0 (diagonal)
+    """
+    
+    # first we need to  extract sequence IDs as a list because We need consistent ordering for matrix indices
+    # dict.keys() order is preserved 
+    seq_ids = list(sequences.keys())
+    n = len(seq_ids)  # Total number of sequences
+    
+   
+    
+    #Initialize distance matrix and create n x n matrix filled with zeros
+    # Distance from any sequence to itself = 0 (diagonal stays 0)
+    distance_matrix = np.zeros((n, n))
+    
+    #   Fill the matrix with pairwise distances. Strategy: we will Only calculate upper triangle (j > i) for efficiency. Then copy to lower triangle since distance is symmetric
+    
+    for i in range(n):
+        # For each sequence i, compare to all sequences after it (j > i)
+        for j in range(i + 1, n):  # Start at i+1 to skip diagonal and already-calculated pairs
+            
+            # Get the actual sequence strings from the   dictionary
+            seq1 = sequences[seq_ids[i]]
+            seq2 = sequences[seq_ids[j]]
+            
+            # Calculate similarity score using Smith-Waterman(Returns a value between 0 (no similarity) and 1 (identical))
+            similarity = smith_waterman(seq1, seq2)
+            
+            # Similarity --> Distance
+            # Similarity scale: 1.0 = identical, 0.0 = completely different
+            # Distance scale:   0.0 = identical, 1.0 = completely different
+            # Formula: distance = 1 - similarity
+            distance = 1 - similarity
+            
+            # Fill BOth positions because matrix is symmetric
+            # distance[i,j] = distance[j,i]
+            distance_matrix[i, j] = distance
+            distance_matrix[j, i] = distance
+        
+   
+    
+    # Return both the matrix and the sequence IDs n(seq_ids tells us which sequence corresponds to which row/column)
+    return distance_matrix, seq_ids 
+```
+
+```{python}
+def get_min_distance(matrix):
+    '''Function to find the smallest value off-diagonal in the distance matrix.
+    
+    Args: 
+        matrix (2D numpy array): a distance matrix
+    
+    Returns:
+        min_val (float): The smallest distance in the matrix
+        pos (tuple): The (row, col) position of the smallest distance
+    '''
+    
+    # Create a copy of the matrix so we don't modify the original!
+    temp_matrix = matrix.copy()
+    
+    # Set diagonal to infinity so it won't be selected
+    # np.fill_diagonal sets all diagonal elements to a value
+    np.fill_diagonal(temp_matrix, np.inf)
+    
+    # Find the minimum value
+    min_val = np.min(temp_matrix)
+    
+    # Find the position of the minimum: np.argmin gives the flattened index, unravel_index converts to (row, col)
+    pos = np.unravel_index(np.argmin(temp_matrix), temp_matrix.shape)
+    
+    return min_val, pos
+```
+
+```{python}
+def neighbor_joining(
+    distance_matrix: np.ndarray,
+    labels: List[str]
+) -> str:
+    """Implements Neighbor-Joining algorithm for phylogenetic tree construction.
+
+    Args:
+        distance_matrix (np.ndarray): Distance matrix from Smith-Waterman scores
+        labels (List[str]): Sequence identifiers
+
+    Returns:
+        str: Newick format tree string
+    """
+   
+    #We need copies so we don't modify the originals
+    
+    dist = distance_matrix.copy()  # Distance matrix that we'll modify
+    nodes = labels.copy()  # List of active nodes (starts with all sequences)
+    n = len(nodes)  # Current number of active nodes
+    
+    # Tree structure: dictionary where keys are node names
+    tree = {}
+    
+    # Counter for creating unique internal node names
+    node_counter = 0
+    
+    #print(f"Starting Neighbor-Joining with {n} sequences...")
+    
+   
+    #step 2: main loop that  Continues until only 2 nodes remain
+    # Each iteration joins 2 nodes into 1, so we need (n-2) iterations
+    
+    while n > 2:
+        
+        
+        # stp 3: Calculate Q-Matrix  Q-matrix corrects distances to account for tree structure
+       
+        
+        # Formula: Q(i,j) = (n-2)*d(i,j) - sum_i - sum_j
+        # Where sum_i = sum of all distances from node i
+        
+        Q = np.zeros((n, n))
+        
+        # Calculate Q for each pair of nodes
+        for i in range(n):
+            for j in range(n):
+                if i != j:  # Skip diagonal
+                    # Sum of all distances from node i to all other nodes
+                    sum_i = np.sum(dist[i, :])
+                    # Sum of all distances from node j to all other nodes
+                    sum_j = np.sum(dist[j, :])
+                    # Q-matrix formula
+                    Q[i, j] = (n - 2) * dist[i, j] - sum_i - sum_j
+        
+        
+        #Find Minimum Q(i,j): The pair with minimum Q value are the "neighbors" to join
+        
+        min_q, (i, j) = get_min_distance(Q)
+        
+        # Ensure i < j for consistency (makes indexing easier later)
+        if i > j:
+            i, j = j, i
+        
+       
+        
+       
+        #  Calculate Branch Lengths
+        
+        # How far is each node from their common parent?
+        # Formula accounts for different evolutionary rates
+        
+        sum_i = np.sum(dist[i, :])
+        sum_j = np.sum(dist[j, :])
+        
+        # Branch length from new node to node i
+        # Formula: d_i = d(i,j)/2 + (sum_i - sum_j)/(2*(n-2))
+        branch_i = dist[i, j] / 2 + (sum_i - sum_j) / (2 * (n - 2))
+        
+        # Branch length from new node to node j
+        branch_j = dist[i, j] - branch_i
+        
+        # Biological constraint: branch lengths can't be negative
+        # (Sometimes calculation gives small negative due to rounding)
+        branch_i = max(0, branch_i)
+        branch_j = max(0, branch_j)
+        
+        
+        
+        
+        #Create New Internal Node
+        # This node represents the common ancestor of nodes i and j
+        
+        new_node_name = f"Node{node_counter}"
+        node_counter += 1
+        
+        # Store the tree structure. This new node connects to i and j with the calculated branch lengths
+        tree[new_node_name] = {
+            nodes[i]: branch_i,
+            nodes[j]: branch_j
+        }
+        
+        
+        #  we need to  calculate Distances to New Node
+        # For all other nodes k, what's the distance to our new node?
+        # Formula: d(new, k) = (d(i,k) + d(j,k) - d(i,j)) / 2
+        # This is the average distance minus the join distance
+        
+        new_distances = np.zeros(n - 2)  # One less because we're removing 2
+        
+        k_idx = 0  # Index for new_distances array
+        for k in range(n):
+            # Skip the nodes we're joining
+            if k != i and k != j:
+                new_distances[k_idx] = (dist[i, k] + dist[j, k] - dist[i, j]) / 2
+                k_idx += 1
+        
+        
+        #Update Distance Matrix
+        
+        # Remove rows/columns for i and j, add row/column for new node
+        # we must  Delete larger index first! Otherwise indices shift
+        
+        # Remove rows for j (larger) then i (smaller)
+        dist = np.delete(dist, [j, i], axis=0)
+        # Remove columns for j then i
+        dist = np.delete(dist, [j, i], axis=1)
+        
+        # Add new row (distances from new node to all others)
+        dist = np.vstack([dist, new_distances])
+        
+        # Add new column (same distances, plus 0 for diagonal)
+        # Need to append 0 for the diagonal element
+        new_col = np.append(new_distances, 0).reshape(-1, 1)
+        dist = np.hstack([dist, new_col])
+        # Remove the two nodes we joined, add the new node
+        
+        # Remove larger index first to avoid shifting problems
+        nodes.pop(j)
+        nodes.pop(i)
+        
+        # Add the new internal node
+        nodes.append(new_node_name)
+        
+        # Update count
+        n = len(nodes)
+    
+    
+    #   terminate and  join Last Two Nodes
+    # When only 2 nodes remain, create the root and join them
+    
+    #print(f"  Final join: {nodes[0]} and {nodes[1]}")
+    
+    # The distance between the final two nodes
+    final_distance = dist[0, 1]
+    
+    # Create the root node
+    final_node_name = f"Node{node_counter}"
+    tree[final_node_name] = {
+        nodes[0]: final_distance / 2,
+        nodes[1]: final_distance / 2
+    }
+    
+    
+    # build Newick strin
+   
+  
+    
+    def build_newick(node_name):
+        """Recursively build Newick string from tree dictionary.
+        
+        Args:
+            node_name: Current node to process
+            
+        Returns:
+            Newick string for this subtree
+        """
+        # If this node isn't in tree dict, it's a leaf (sequence)
+        if node_name not in tree:
+            return node_name
+        
+        # Recursive case: This is an internal node with children
+        children = tree[node_name]
+        child_strings = []
+        
+        # Build Newick string for each child
+        for child_name, branch_length in children.items():
+            # Recursively get the Newick string for the child
+            child_newick = build_newick(child_name)
+            # Add the branch length
+            child_strings.append(f"{child_newick}:{branch_length:.6f}")
+        
+        #Combine the children, but the doll back together: (child1:len1,child2:len2)
+        return f"({','.join(child_strings)})"
+    
+    # Start from the root and build the entire tree
+    newick_tree = build_newick(final_node_name) + ";"
+    
+    
+    
+    return newick_tree
+```
+```{python}
+
+
+ ### testing and print results 
+#  Run Neighbor-Joining
+print(" Constructing phylogenetic tree")
+
+tree = neighbor_joining(dist_matrix, seq_ids)
+print()
+
+# Analyze results
+
+print("RESULTS")
+
+print(f"  Tree construction complete!")
+print(f"  Tree string length: {len(tree)} characters")
+print(f"  Number of commas: {tree.count(',')} (= {len(sequences)-1} internal branches)")
+print(f"  Number of colons: {tree.count(':')} (= branch length indicators)")
+print()
+
+# Show beginning of tree
+print("First 1000 characters of Newick tree:")
+print(tree[:1000] + "..." if len(tree) > 1000 else tree)
+print()
+
+# Validate tree structure
+print("Tree validation:")
+print(f" Ends with semicolon : {tree.endswith(';')}")
+print(f"   Starts with parenthesis: {tree.startswith('(')}")
+print(f"   Balanced parentheses: {tree.count('(') == tree.count(')')}")
+print()
+
+print("=" * 70)
+print("ANALYSIS COMPLETE!!!! omg it worked!!!")
+print("=" * 70)
+print()
+print("Next steps:")
+print("  1. Copy the Newick string above")
+print("  2. Visualize at: https://etetoolkit.org/treeview/")
+
+```
+```{python}
+def plot_tree(newick_tree: str) -> None:
+    """Plots phylogenetic tree using ete3.
+
+    Args:
+        newick_tree (str): Tree in Newick format
+    """
+    tree = ete3.Tree(newick_tree)
+    ts = ete3.TreeStyle()
+    ts.show_leaf_name = True
+    ts.mode = "c"  # circular style
+    return tree.render("%%inline", tree_style=ts)
+```
+
+```{python}
+if __name__ == "__main__":
+    # Read HIV RT sequences
+    sequences = read_fasta("lafayette_SARS_RT.fasta")
+    
+    # Build distance matrix using Smith-Waterman
+    dist_matrix, seq_ids = build_distance_matrix(sequences)
+    
+    # Generate unrooted tree using Neighbor-Joining
+    tree = neighbor_joining(dist_matrix, seq_ids)
+    
+    # Plot tree
+    plot_tree(tree)
+```
+
+
+
+
+
+
+
+
+
+
