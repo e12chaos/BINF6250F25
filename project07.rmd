@@ -1,4 +1,24 @@
-Import numpy as np
+---
+title: "BWT"
+author: "Nikaela Aitken & Jason Bae"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+library('reticulate')
+
+
+
+```
+
+```{python}
+import numpy as np
 
 def BWT(string: str) -> str:
     """Function to calculate Burrows-Wheeler Transform for a given string.
@@ -19,33 +39,38 @@ def BWT(string: str) -> str:
         >>> BWT('banana$')
         'annb$aa'
     """
-
-    #Make string into list of individual characters, put $ in last position
-    string = list(string)
-
-    # Establish empty nxn matrix where n is len(string)
-    bwt_matrix = np.empty((n,n), dtype = str)
-
-    # For loop for each row:
-    for row in bwt_matrix:
-	  # Insert list as the row
-        row = string
-	  # Pop first element and insert that as last element in list
-        string.insert(0, string.pop(:-1))
-
-    # Take matrix and numpy sort along axis 0 (rows)
-    np.sort(bwt_matrix, axis = 0)
-
-    # Take last column of matrix and establish that as bwt
-    bwt = bwt_matrix[:,-1]
-
-    return bwt 
+    # Add $ if not already present
+    if not string.endswith('$'):
+        string = string + '$'
+    
+    # Get length
+    n = len(string)
+    
+    # Create all rotations
+    rotations = []
+    for i in range(n):
+        rotations.append(string[i:] + string[:i])
+    
+    # Sort rotations lexicographically
+    rotations.sort()
+    
+    # Extract last column
+    bwt = ''.join([rotation[-1] for rotation in rotations])
+    
+    return bwt
 
 
+# Test cases
+print(BWT('googol'))    # Should output: 'lo$oogg'
+print(BWT('banana$'))   # Should output: 'annb$aa'
+```
 
 
 
 
+
+
+```{python}
 def suffix_array(string: str) -> list[int]:
     """Function to calculate suffix-array for a given string.
     
@@ -66,21 +91,19 @@ def suffix_array(string: str) -> list[int]:
         >>> suffix_array('banana$')
         [6, 5, 3, 1, 0, 4, 2]
     """
-# Create a list of all suffices of the text, each paired with its starting position
-suffixes = []
-for i in range(len(string)-1):
-suffixes.append(string[i:len(string)])
-
-# Sort these suffix-position pairs lexicographically by suffix
-positions = list(range(len(string)))
-suffixes = list(zip(suffixes, positions))
-suffixes.sort()
-
-# Extract just the starting positions from the sorted pairs
-suffix_array = [pair[1] for pair in suffixes]
-
-# Return the list of sorted starting positions
-return suffix_array
+    # Create a list of all suffices of the text, each paired with its starting position
+    suffixes = []
+    for i in range(len(string)-1):
+        suffixes.append(string[i:len(string)])
+    # Sort these suffix-position pairs lexicographically by suffix
+    positions = list(range(len(string)))
+    suffixes = list(zip(suffixes, positions))
+    suffixes.sort()
+    # Extract just the starting positions from the sorted pairs
+    suffix_array = [pair[1] for pair in suffixes]
+    # Return the list of sorted starting positions
+    return suffix_array
+```
 
 
 
@@ -92,8 +115,7 @@ return suffix_array
 
 
 
-
-
+```{python}
 def BWT_from_suffix_array(
   text: str, 
   suffix_positions: list[int]
@@ -117,31 +139,32 @@ def BWT_from_suffix_array(
         >>> BWT_from_suffix_array("googol$", [6, 3, 0, 5, 2, 4, 1])
         'lo$oogg'
     """
-# Initialize an empty string of the same length as the input text
-bwt = “”
-
-# for each position in the suffix positions list do
-# if the suffix starts at the beginning of the text then
-# 	Add the last character of the text to the transformed result
-# else
-# 	Add the character preceding the suffix to the transformed result
-for position in suffix_positions:
-bwt = bwt + string[position-1]
-
-# return the transformed result
-return bwt
-
-
-
+    # Initialize an empty string of the same length as the input text
+    bwt = ""
+    
+    # for each position in the suffix positions list do
+    # if the suffix starts at the beginning of the text then
+    # 	Add the last character of the text to the transformed result
+    # else
+    # 	Add the character preceding the suffix to the transformed result
+    for position in suffix_positions:
+        bwt = bwt + text[position-1]
+    
+    # return the transformed result
+    return bwt
+```
 
 
 
 
 
 
+
+
+
+
+```{python}
 from collections import Counter
-
-
 def cal_count(string: str) -> dict[str, int]:
     """Function to count characters lexicographically smaller than each character.
     
@@ -162,32 +185,32 @@ def cal_count(string: str) -> dict[str, int]:
         >>> cal_count('banana')
         {'a': 0, 'b': 3, 'n': 4}
     """
-# Initialize a dictionary to track character counts
-chars = Counter(string)
-
-# Initialize a result dictionary for cumulative counts
-# Set initial cumulative count to zero
-counts = chars.clear()
-
-# for each character in the sorted alphabet do
-# Store the current cumulative count for this character
-# Increase the cumulative count by the frequency of this character
-for char in chars:
-	for compare in chars:
-		if compare > char:
-			counts[char] += chars[compare]
-
-# return the dictionary of cumulative counts
-return counts
-
+    # Initialize a dictionary to track character counts
+    chars = Counter(string)
+    # Initialize a result dictionary for cumulative counts
+    # Set initial cumulative count to zero
+    counts = {}
+    chars.clear()
+    # for each character in the sorted alphabet do
+    # Store the current cumulative count for this character
+    # Increase the cumulative count by the frequency of this character
+    for char in chars:
+        for compare in chars:
+            if compare > char:
+                counts[char] += chars[compare]
+    # return the dictionary of cumulative counts
+    return counts
+```
 
 
 
 
 
 
-from collections import defaultdict
 
+
+```{python}
+from collections import defaultdict, Counter
 def cal_occur(bwt_string: str) -> dict[str, list[int]]:
     """Function to calculate occurrences of each character up to each position.
     
@@ -209,26 +232,24 @@ def cal_occur(bwt_string: str) -> dict[str, list[int]]:
         >>> cal_occur('annb$aa')
         {'$': [0, 0, 0, 0, 1, 1, 1], 'a': [0, 1, 1, 1, 1, 2, 3], 'b': [0, 0, 0, 1, 1, 1, 1], 'n': [0, 0, 2, 2, 2, 2, 2]}
     """
-# Initialize a dictionary mapping each character to an array of zeros
-characters = Counter(bwt_string)
-occur_map = defaultdict(list)
-for char in characters:
-	occur_map[char].append(0)
-
-# for each position in the transformed text do
-# Identify the character at the current position
-# for each character in the alphabet do
-# Copy the previous occurrence count to the current position
-# Increment the occurrence count for the current character
-for index, element in enumerate(bwt_string):
-	occur_map[element] += 1
-	if index != len(bwt_string)-1:
-		for char in characters:
-			occur_map[char].append(occur_map[char][index])
-
-# return the dictionary of occurrence counts
-return occur_map
-
+    # Initialize a dictionary mapping each character to an array of zeros
+    characters = Counter(bwt_string)
+    occur_map = defaultdict(list)
+    for char in characters:
+        occur_map[char].append(0)
+    # for each position in the transformed text do
+    # Identify the character at the current position
+    # for each character in the alphabet do
+    # Copy the previous occurrence count to the current position
+    # Increment the occurrence count for the current character
+    for index, element in enumerate(bwt_string):
+        occur_map[element] += 1
+        if index != len(bwt_string)-1:
+            for char in characters:
+                occur_map[char].append(occur_map[char][index])
+    # return the dictionary of occurrence counts
+    return occur_map
+```
 
 
 
@@ -236,13 +257,7 @@ return occur_map
 
 
 
-
-
-
-
-
-
-
+```{python}
 def update_range(
   lower: int, 
   upper: int, 
@@ -269,6 +284,22 @@ def update_range(
     Note:
         This function assumes occur[a][-1] = 0 for boundary conditions.
     """
+    
+    def update_range(lower, upper, count, occur, a): 
+        new_lower = count[a] + occur[a][lower] 
+        new_upper = count[a] + occur[a][upper] 
+        return new_lower, new_upper
+```
+
+
+
+
+
+
+
+
+
+
 # Calculate new start position using character's count and occurrences at range start
 # Calculate new end position using character's count and occurrences at range end
 # return new start and end positions
@@ -282,10 +313,7 @@ def update_range(
 
 
 
-
-
-
-
+```{python}
 def find_match(query: str, reference: str) -> list[int]:
     """Function to find exact matching by applying Burrows-Wheeler Transform.
     
@@ -308,6 +336,34 @@ def find_match(query: str, reference: str) -> list[int]:
         >>> find_match('xyz', 'banana')
         []
     """
+    
+def find_match(query, reference):
+    # Step 1: Calculate all needed data structures
+    suffix_positions = suffix_array(reference + '$')  # Add $ terminator
+    bwt = BWT_from_suffix_array(reference + '$', suffix_positions)
+    count = cal_count(reference + '$')
+    occur = cal_occur(bwt)
+    
+    # Step 2: Initialize range
+    lower = 0
+    upper = len(reference)
+    
+    # Step 3: Loop backwards through query
+    for char in reversed(query):
+        new_lower, new_upper = update_range(lower, upper, count, occur, char)
+        lower = new_lower
+        upper = new_upper
+        
+        if lower >= upper:
+            return []
+    
+    # Step 4: Collect suffix positions in the final range
+    # Step 4: Collect suffix positions in the final range
+    matches = suffix_positions[lower:upper]
+    # What array contains the suffix positions?
+    
+    # Step 5: Return the list 
+    return matches
 # Initialize search range to cover the entire transformed text
 # for each character in the pattern, processing from right to left do
 # Update the search range based on the current character
@@ -315,6 +371,12 @@ def find_match(query: str, reference: str) -> list[int]:
 # return empty list as pattern is not found
 # Collect all suffix positions within the final range
 # return the list of matching positions
+
+```
+
+
+
+
 
 
 
