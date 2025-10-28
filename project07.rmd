@@ -16,6 +16,10 @@ library('reticulate')
 
 ```{python}
 import numpy as np
+from collections import defaultdict, Counter
+```
+
+```{python}
 
 def BWT(string: str) -> str:
     """Function to calculate Burrows-Wheeler Transform for a given string.
@@ -63,10 +67,6 @@ print(BWT('banana$'))   # Should output: 'annb$aa'
 ```
 
 
-
-
-
-
 ```{python}
 def suffix_array(string: str) -> list[int]:
     """Function to calculate suffix-array for a given string.
@@ -90,7 +90,7 @@ def suffix_array(string: str) -> list[int]:
     """
     # Create a list of all suffices of the text, each paired with its starting position
     suffixes = []
-    for i in range(len(string)-1):
+    for i in range(len(string)):
         suffixes.append(string[i:len(string)])
     # Sort these suffix-position pairs lexicographically by suffix
     positions = list(range(len(string)))
@@ -102,14 +102,9 @@ def suffix_array(string: str) -> list[int]:
     return suffix_array
 ```
 
-
-
-
-
-
-
-
-
+```{python}
+print(suffix_array("banana$"))
+```
 
 
 ```{python}
@@ -152,16 +147,14 @@ def BWT_from_suffix_array(
 ```
 
 
-
-
-
-
-
+```{python}
+suffix_array = suffix_array("banana$")
+print(BWT_from_suffix_array("banana$", suffix_array))
+```
 
 
 
 ```{python}
-from collections import Counter
 def cal_count(string: str) -> dict[str, int]:
     """Function to count characters lexicographically smaller than each character.
     
@@ -182,32 +175,31 @@ def cal_count(string: str) -> dict[str, int]:
         >>> cal_count('banana')
         {'a': 0, 'b': 3, 'n': 4}
     """
-    # Initialize a dictionary to track character counts
-    chars = Counter(string)
-    # Initialize a result dictionary for cumulative counts
-    # Set initial cumulative count to zero
+
+    # Establishes lexicographical order of the unique characters in the string
+    uniques = Counter(string)
+    order = list((uniques).keys())
+    order.sort()
+    
+    # Establish counts as an empty dictionary to add to
     counts = {}
-    chars.clear()
-    # for each character in the sorted alphabet do
-    # Store the current cumulative count for this character
-    # Increase the cumulative count by the frequency of this character
-    for char in chars:
-        for compare in chars:
-            if compare > char:
-                counts[char] += chars[compare]
-    # return the dictionary of cumulative counts
+    
+    # Keeps track of how many characters are smaller than the current character being compared
+    smaller_than = 0
+    
+    # Loop through the order list adding each character's counts in each iteration for the next character's smaller_than total
+    for char in order:
+      counts[char] = smaller_than
+      smaller_than += uniques[char]
     return counts
 ```
 
-
-
-
-
-
+```{python}
+print(cal_count("banana"))
+```
 
 
 ```{python}
-from collections import defaultdict, Counter
 def cal_occur(bwt_string: str) -> dict[str, list[int]]:
     """Function to calculate occurrences of each character up to each position.
     
@@ -249,11 +241,6 @@ def cal_occur(bwt_string: str) -> dict[str, list[int]]:
 ```
 
 
-
-
-
-
-
 ```{python}
 def update_range(
     lower: int, 
@@ -288,26 +275,9 @@ def update_range(
 ```
 
 
-
-
-
-
-
-
-
-
 # Calculate new start position using character's count and occurrences at range start
 # Calculate new end position using character's count and occurrences at range end
 # return new start and end positions
-
-
-
-
-
-
-
-
-
 
 ```{python}
 def find_match(query: str, reference: str) -> list[int]:
