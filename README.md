@@ -14,8 +14,6 @@ These components form the foundation for advanced text compression and searching
 Put pseudocode in this box:
 
 ```
-
-
 def BWT(string: str) -> str:
 
     Make string into list of individual characters, put $ in last position
@@ -103,7 +101,7 @@ def update_range(
 	We use occur['a'] to count how many 'a's we've seen
 	Start at where the 'a' rows begin:
 
-Add how many 'a's we need to skip based on our current position
+	Add how many 'a's we need to skip based on our current position
 
 
 def find_match(query: str, reference: str) -> list[int]:
@@ -120,7 +118,6 @@ def find_match(query: str, reference: str) -> list[int]:
 	Step 2: Initialize the range
 	Step 3: Loop through query backwards
 	Update range # Check if empty # Step 4: Collect matching positions # Step 5: Return results
-
 
 ```
 
