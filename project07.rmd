@@ -61,6 +61,9 @@ def BWT(string: str) -> str:
     return bwt
 
 
+```
+```{python}
+
 # Test cases
 print(BWT('googol'))    # Should output: 'lo$oogg'
 print(BWT('banana$'))   # Should output: 'annb$aa'
@@ -196,7 +199,10 @@ def cal_count(string: str) -> dict[str, int]:
 
 ```{python}
 print(cal_count("banana"))
+print(cal_count("ATGACG"))
 ```
+
+
 
 
 ```{python}
@@ -219,25 +225,31 @@ def cal_occur(bwt_string: str) -> dict[str, list[int]]:
         {'$': [0, 0, 1, 1, 1], 'A': [1, 1, 1, 1, 1], 'C': [0, 0, 0, 1, 1], 'G': [0, 1, 1, 1, 2]}
         
         >>> cal_occur('annb$aa')
-        {'$': [0, 0, 0, 0, 1, 1, 1], 'a': [0, 1, 1, 1, 1, 2, 3], 'b': [0, 0, 0, 1, 1, 1, 1], 'n': [0, 0, 2, 2, 2, 2, 2]}
+        {'$': [0, 0, 0, 0, 1, 1, 1], 'a': [1, 1, 1, 1, 1, 2, 3], 'b': [0, 0, 0, 1, 1, 1, 1], 'n': [0, 1, 2, 2, 2, 2, 2]}
     """
     # Initialize a dictionary mapping each character to an array of zeros
     characters = Counter(bwt_string)
     occur_map = defaultdict(list)
     for char in characters:
-        occur_map[char].append(0)
+      occur_map[char].append(0)
+        
     # for each position in the transformed text do
     # Identify the character at the current position
     # for each character in the alphabet do
     # Copy the previous occurrence count to the current position
     # Increment the occurrence count for the current character
     for index, element in enumerate(bwt_string):
-        occur_map[element] += 1
-        if index != len(bwt_string)-1:
-            for char in characters:
-                occur_map[char].append(occur_map[char][index])
+      occur_map[element][index] += 1
+      if index != len(bwt_string)-1:
+        for char in characters:
+          occur_map[char].append(occur_map[char][index])
     # return the dictionary of occurrence counts
     return occur_map
+```
+
+```{python}
+print(cal_occur("AG$CG"))
+print(cal_occur("annb$aa"))
 ```
 
 
@@ -269,15 +281,23 @@ def update_range(
     Note:
         This function assumes occur[a][-1] = 0 for boundary conditions.
     """
+    # Calculate new start position using character's count and occurrences at range start
     new_lower = count[a] + occur[a][lower] 
-    new_upper = count[a] + occur[a][upper] 
+    
+    # Calculate new end position using character's count and occurrences at range end
+    new_upper = count[a] + occur[a][upper]
+    
+    # return new start and end positions
     return new_lower, new_upper
 ```
 
+```{python}
+occur = cal_occur("aanb$aa")
+count = cal_count("banana")
+lower, upper = update_range(0, 6, count, occur, "a")
+print(lower,upper)
+```
 
-# Calculate new start position using character's count and occurrences at range start
-# Calculate new end position using character's count and occurrences at range end
-# return new start and end positions
 
 ```{python}
 def find_match(query: str, reference: str) -> list[int]:
@@ -305,13 +325,12 @@ def find_match(query: str, reference: str) -> list[int]:
     # Step 1: Calculate all needed data structures
     suffix_positions = suffix_array(reference + '$')
     bwt = BWT_from_suffix_array(reference + '$', suffix_positions)
-    count = cal_count(reference + '$')
+    count = cal_count(reference)
     occur = cal_occur(bwt)
-    
+
     # Initialize search range to cover the entire transformed text
     lower = 0
-    upper = len(bwt)
-    
+    upper = len(reference)
     # for each character in the pattern, processing from right to left do
     for char in reversed(query):
         # Check if character exists in reference
@@ -330,19 +349,14 @@ def find_match(query: str, reference: str) -> list[int]:
             return []
     
     # Collect all suffix positions within the final range
-    matches = suffix_positions[lower:upper]
+    matches = suffix_positions[lower:upper+1]
     
     # return the list of matching positions
     return sorted(matches)
 ```
 
-
-
-
-
-
-
-
-
-
+```{python}
+print(find_match("ana", "banana"))
+print(find_match("xyz", "banana"))
+```
 
