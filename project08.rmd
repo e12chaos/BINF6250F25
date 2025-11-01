@@ -1,0 +1,19 @@
+---
+title: "Project 08: Hidden Markov Models"
+author: "Nikaela Aitken & Tiange Feng"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+library('reticulate')
+```
+
+---
