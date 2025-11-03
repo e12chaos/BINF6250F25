@@ -1,0 +1,362 @@
+---
+title: "BWT"
+author: "Nikaela Aitken & Jason Bae"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+library('reticulate')
+```
+
+```{python}
+import numpy as np
+from collections import defaultdict, Counter
+```
+
+```{python}
+
+def BWT(string: str) -> str:
+    """Function to calculate Burrows-Wheeler Transform for a given string.
+    
+    Computes the Burrows-Wheeler Transform by creating all rotations of the input
+    string, sorting them lexicographically, and extracting the last column.
+    
+    Args:
+        string: The input string to transform.
+    
+    Returns:
+        The Burrows-Wheeler Transform of the input string.
+        
+    Examples:
+        >>> BWT('googol')
+        'lo$oogg'
+        
+        >>> BWT('banana$')
+        'annb$aa'
+    """
+    # Add $ if not already present
+    if not string.endswith('$'):
+        string = string + '$'
+    
+    # Get length
+    n = len(string)
+    
+    # Create all rotations
+    rotations = []
+    for i in range(n):
+        rotations.append(string[i:] + string[:i])
+    
+    # Sort rotations lexicographically
+    rotations.sort()
+    
+    # Extract last column
+    bwt = ''.join([rotation[-1] for rotation in rotations])
+    
+    return bwt
+
+
+```
+```{python}
+
+# Test cases
+print(BWT('googol'))    # Should output: 'lo$oogg'
+print(BWT('banana$'))   # Should output: 'annb$aa'
+```
+
+
+```{python}
+def suffix_array(string: str) -> list[int]:
+    """Function to calculate suffix-array for a given string.
+    
+    Computes the suffix array by sorting all suffixes of the input string
+    lexicographically and returning their starting positions.
+    
+    Args:
+        string: The input string to process.
+    
+    Returns:
+        A list of integers representing the starting positions of the
+        lexicographically sorted suffixes.
+        
+    Examples:
+        >>> suffix_array('googol')
+        [6, 3, 0, 5, 2, 4, 1]
+        
+        >>> suffix_array('banana$')
+        [6, 5, 3, 1, 0, 4, 2]
+    """
+    # Create a list of all suffices of the text, each paired with its starting position
+    suffixes = []
+    for i in range(len(string)):
+        suffixes.append(string[i:len(string)])
+    # Sort these suffix-position pairs lexicographically by suffix
+    positions = list(range(len(string)))
+    suffixes = list(zip(suffixes, positions))
+    suffixes.sort()
+    # Extract just the starting positions from the sorted pairs
+    suffix_array = [pair[1] for pair in suffixes]
+    # Return the list of sorted starting positions
+    return suffix_array
+```
+
+```{python}
+print(suffix_array("banana$"))
+```
+
+
+```{python}
+def BWT_from_suffix_array(
+  text: str, 
+  suffix_positions: list[int]
+  ) -> str:
+    """Function to calculate the Burrows-Wheeler Transform from a suffix array.
+    
+    Computes the Burrows-Wheeler Transform by using the suffix array to identify
+    the character that precedes each suffix in the sorted order.
+    
+    Args:
+        text: The input string to transform.
+        suffix_positions: The suffix array for the input string, containing the starting positions of all suffixes in lexicographical order.
+    
+    Returns:
+        The Burrows-Wheeler Transform of the input string.
+        
+    Examples:
+        >>> BWT_from_suffix_array("banana$", [6, 5, 3, 1, 0, 4, 2])
+        'annb$aa'
+        
+        >>> BWT_from_suffix_array("googol$", [6, 3, 0, 5, 2, 4, 1])
+        'lo$oogg'
+    """
+    # Initialize an empty string of the same length as the input text
+    bwt = ""
+    
+    # for each position in the suffix positions list do
+    # if the suffix starts at the beginning of the text then
+    # 	Add the last character of the text to the transformed result
+    # else
+    # 	Add the character preceding the suffix to the transformed result
+    for position in suffix_positions:
+        bwt = bwt + text[position-1]
+    
+    # return the transformed result
+    return bwt
+```
+
+
+```{python}
+suffix_array = suffix_array("banana$")
+print(BWT_from_suffix_array("banana$", suffix_array))
+```
+
+
+
+```{python}
+def cal_count(string: str) -> dict[str, int]:
+    """Function to count characters lexicographically smaller than each character.
+    
+    For each character in the alphabet, calculates how many characters in the
+    input string are lexicographically smaller than it.
+    
+    Args:
+        string: The input string to analyze.
+    
+    Returns:
+        A dictionary mapping each character to the count of characters
+        lexicographically smaller than it.
+    
+    Examples:
+        >>> cal_count('ATGACG')
+        {'A': 0, 'C': 2, 'G': 3, 'T': 5}
+        
+        >>> cal_count('banana')
+        {'a': 0, 'b': 3, 'n': 4}
+    """
+
+    # Establishes lexicographical order of the unique characters in the string
+    uniques = Counter(string)
+    order = list((uniques).keys())
+    order.sort()
+    
+    # Establish counts as an empty dictionary to add to
+    counts = {}
+    
+    # Keeps track of how many characters are smaller than the current character being compared
+    smaller_than = 0
+    
+    # Loop through the order list adding each character's counts in each iteration for the next character's smaller_than total
+    for char in order:
+      counts[char] = smaller_than
+      smaller_than += uniques[char]
+    return counts
+```
+
+```{python}
+print(cal_count("banana"))
+print(cal_count("ATGACG"))
+```
+
+
+
+
+```{python}
+def cal_occur(bwt_string: str) -> dict[str, list[int]]:
+    """Function to calculate occurrences of each character up to each position.
+    
+    For each character and each position i, calculates how many times the
+    character appears in the substring bwt_string[0:i].
+    
+    Args:
+        bwt_string: The BWT string to analyze.
+    
+    Returns:
+        A dictionary mapping each character to a list of occurrence counts,
+        where occur[char][i] is the number of occurrences of char in
+        bwt_string[0:i].
+    
+    Examples:
+        >>> cal_occur('AG$CG')
+        {'$': [0, 0, 1, 1, 1], 'A': [1, 1, 1, 1, 1], 'C': [0, 0, 0, 1, 1], 'G': [0, 1, 1, 1, 2]}
+        
+        >>> cal_occur('annb$aa')
+        {'$': [0, 0, 0, 0, 1, 1, 1], 'a': [1, 1, 1, 1, 1, 2, 3], 'b': [0, 0, 0, 1, 1, 1, 1], 'n': [0, 1, 2, 2, 2, 2, 2]}
+    """
+    # Initialize a dictionary mapping each character to an array of zeros
+    characters = Counter(bwt_string)
+    occur_map = defaultdict(list)
+    for char in characters:
+      occur_map[char].append(0)
+        
+    # for each position in the transformed text do
+    # Identify the character at the current position
+    # for each character in the alphabet do
+    # Copy the previous occurrence count to the current position
+    # Increment the occurrence count for the current character
+    for index, element in enumerate(bwt_string):
+      occur_map[element][index] += 1
+      if index != len(bwt_string)-1:
+        for char in characters:
+          occur_map[char].append(occur_map[char][index])
+    # return the dictionary of occurrence counts
+    return occur_map
+```
+
+```{python}
+print(cal_occur("AG$CG"))
+print(cal_occur("annb$aa"))
+```
+
+
+```{python}
+def update_range(
+    lower: int, 
+    upper: int, 
+    count: dict[str, int], 
+    occur: dict[str, list[int]], 
+    a: str
+) -> tuple[int, int]:
+    """Function to update range given character a.
+    
+    Updates the search range during backward search in the BWT pattern matching
+    algorithm when processing character a.
+    
+    Args:
+        lower: The lower boundary of the current range.
+        upper: The upper boundary of the current range.
+        count: Dictionary mapping each character to the count of lexicographically
+            smaller characters.
+        occur: Dictionary mapping each character to its occurrence counts at each
+            position.
+        a: The character being processed in the pattern.
+    
+    Returns:
+        A tuple containing the updated lower and upper boundaries of the range.
+    
+    Note:
+        This function assumes occur[a][-1] = 0 for boundary conditions.
+    """
+    # Calculate new start position using character's count and occurrences at range start
+    new_lower = count[a] + occur[a][lower] 
+    
+    # Calculate new end position using character's count and occurrences at range end
+    new_upper = count[a] + occur[a][upper]
+    
+    # return new start and end positions
+    return new_lower, new_upper
+```
+
+```{python}
+occur = cal_occur("aanb$aa")
+count = cal_count("banana")
+lower, upper = update_range(0, 6, count, occur, "a")
+print(lower,upper)
+```
+
+
+```{python}
+def find_match(query: str, reference: str) -> list[int]:
+    """Function to find exact matching by applying Burrows-Wheeler Transform.
+    
+    Searches for all occurrences of the query string within the reference string
+    using the Burrows-Wheeler Transform algorithm for efficient pattern matching.
+    
+    Args:
+        query: The pattern string to search for.
+        reference: The text string to search within.
+    
+    Returns:
+        A list of integers representing the 0-based starting positions of all
+        occurrences of the query string within the reference string. Returns an
+        empty list if no matches are found.
+    
+    Examples:
+        >>> find_match('ana', 'banana')
+        [1, 3]
+        
+        >>> find_match('xyz', 'banana')
+        []
+    """
+    # Step 1: Calculate all needed data structures
+    suffix_positions = suffix_array(reference + '$')
+    bwt = BWT_from_suffix_array(reference + '$', suffix_positions)
+    count = cal_count(reference)
+    occur = cal_occur(bwt)
+
+    # Initialize search range to cover the entire transformed text
+    lower = 0
+    upper = len(reference)
+    # for each character in the pattern, processing from right to left do
+    for char in reversed(query):
+        # Check if character exists in reference
+        if char not in count:
+            # return empty list as pattern is not found
+            return []
+        
+        # Update the search range based on the current character
+        new_lower, new_upper = update_range(lower, upper, count, occur, char)
+        lower = new_lower
+        upper = new_upper
+        
+        # if the range becomes empty then
+        if lower >= upper:
+            # return empty list as pattern is not found
+            return []
+    
+    # Collect all suffix positions within the final range
+    matches = suffix_positions[lower:upper+1]
+    
+    # return the list of matching positions
+    return sorted(matches)
+```
+
+```{python}
+print(find_match("ana", "banana"))
+print(find_match("xyz", "banana"))
+```
+
