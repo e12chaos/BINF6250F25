@@ -17,3 +17,140 @@ library('reticulate')
 ```
 
 ---
+
+def convert_hmm_params_to_matrices(states_list, obs_map, init_probs_dict, trans_probs_dict, emit_probs_dict):
+    '''Convert HMM dictionary parameters to numpy matrices
+    
+    Args:
+        states_list (list): ordered list of state names
+        obs_map (dict): observation names to indices mapping
+        init_probs_dict (dict): initial state probabilities
+        trans_probs_dict (dict): transition probabilities (nested dict)
+        emit_probs_dict (dict): emission probabilities (nested dict)
+    
+    Returns:
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+    '''
+    pass
+
+
+def viterbi(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Viterbi algorithm for finding most likely hidden state sequence
+    
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+    
+    Returns:
+        best_path (list): most likely hidden state sequence
+        best_path_log_prob (float): log-probability of most likely path
+    '''
+    pass
+
+
+def initialize(obs_seq, states, log_initial, log_emission):
+    '''Initialize viterbi table and backpointers for first observation
+    
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        log_initial (numpy array): log of initial probabilities
+        log_emission (numpy array): log of emission probabilities
+    
+    Returns:
+        viterbi_table (numpy array): initialized probability matrix
+        backpointers (numpy array): initialized traceback matrix
+    '''
+    pass
+
+
+def recurse(viterbi_table, backpointers, obs_seq, log_transition, log_emission, t):
+    '''Perform one recursion step of Viterbi algorithm
+    
+    Args:
+        viterbi_table (numpy array): probability matrix
+        backpointers (numpy array): traceback matrix
+        obs_seq (list): observation sequence as integer indices
+        log_transition (numpy array): log of transition probabilities
+        log_emission (numpy array): log of emission probabilities
+        t (int): current time step
+    
+    Returns:
+        None: modifies viterbi_table and backpointers in place
+    '''
+    pass
+
+
+def terminate(viterbi_table, states):
+    '''Find most likely final state
+    
+    Args:
+        viterbi_table (numpy array): completed probability matrix
+        states (list): all possible hidden state names
+    
+    Returns:
+        last_state (int): index of final state with highest probability
+        best_path_log_prob (float): maximum log probability at final position
+    '''
+    pass
+
+
+def traceback(backpointers, states, last_state):
+    '''Reconstruct most likely state sequence
+    
+    Args:
+        backpointers (numpy array): traceback matrix
+        states (list): all possible hidden state names
+        last_state (int): index of best final state
+    
+    Returns:
+        best_path (list): most likely hidden state sequence
+    '''
+    pass
+
+
+def log_probability(prob):
+    '''Convert probability to log space
+    
+    Args:
+        prob (float): probability value (0 to 1)
+    
+    Returns:
+        log_prob (float): log probability or -inf for zero
+    '''
+    pass
+
+
+def get_emission_prob(state, obs, emit_probs, use_log=True):
+    '''Get emission probability for state and observation
+    
+    Args:
+        state (str): hidden state
+        obs (str): observation symbol
+        emit_probs (dict): emission probabilities
+        use_log (bool): return log probability, default = True
+    
+    Returns:
+        prob (float): emission probability
+    '''
+    pass
+
+
+def get_transition_prob(from_state, to_state, trans_probs, use_log=True):
+    '''Get transition probability between states
+    
+    Args:
+        from_state (str): previous state
+        to_state (str): current state
+        trans_probs (dict): transition probabilities
+        use_log (bool): return log probability, default = True
+    
+    Returns:
+        prob (float): transition probability
+    '''
+    pass
