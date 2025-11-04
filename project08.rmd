@@ -9,31 +9,67 @@ output:
     toc_depth: 2
 ---
 
----
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=TRUE)
 library('reticulate')
 ```
 
----
 
-def convert_hmm_params_to_matrices(states_list, obs_map, init_probs_dict, trans_probs_dict, emit_probs_dict):
-    '''Convert HMM dictionary parameters to numpy matrices
-    
-    Args:
-        states_list (list): ordered list of state names
-        obs_map (dict): observation names to indices mapping
-        init_probs_dict (dict): initial state probabilities
-        trans_probs_dict (dict): transition probabilities (nested dict)
-        emit_probs_dict (dict): emission probabilities (nested dict)
-    
-    Returns:
-        initial_probs (numpy array): 1D array of initial probabilities
-        transition_probs (numpy array): 2D NxN transition matrix
-        emission_probs (numpy array): 2D NxM emission matrix
-    '''
-    pass
+
+ 
+ 
+ def convert_hmm_params_to_matrices(
+   states_list: List[str],
+   obs_map: Dict[str, int],
+   init_probs_dict: Dict[str, float],
+   trans_probs_dict: Dict[str, Dict[str, float]],
+   emit_probs_dict: Dict[str, Dict[str, float]]
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+   """
+   Args:
+       states_list: An ordered list of state names (e.g., ['I', 'G']).
+       obs_map: A dictionary mapping observation names to their indices
+                (e.g., {'A': 0, 'C': 1, ...}).
+       init_probs_dict: The dictionary of initial probabilities.
+       trans_probs_dict: The nested dictionary of transition probabilities.
+       emit_probs_dict: The nested dictionary of emission probabilities.
+
+   Returns:
+       A tuple of numpy arrays:
+       - initial_probs (1D array)
+       - transition_probs (2D array)
+       - emission_probs (2D array)
+   """
+   N = len(states_list)
+   M = len(obs_map)
+
+   # 1. Create Initial Probabilities array
+   initial_probs = np.zeros(N)
+   for i, state in enumerate(states_list):
+       initial_probs[i] = init_probs_dict.get(state, 0.0)
+
+   # 2. Create Transition Matrix
+   transition_probs = np.zeros((N, N))
+   for i, from_state in enumerate(states_list):
+   	for j, to_state in enumerate(states_list):
+       	# Find the probability of going from_state -> to_state
+       	if from_state in trans_probs_dict and to_state in trans_probs_dict[from_state]:
+               transition_probs[i, j] = trans_probs_dict[from_state][to_state]
+       	# Default to 0 if a transition isn't specified
+       	
+   # 3. Create Emission Matrix
+   emission_probs = np.zeros((N, M))
+   for i, state in enumerate(states_list):
+   	for obs_name, j in obs_map.items():
+       	# Find the probability of emitting obs_name from state
+       	if state in emit_probs_dict and obs_name in emit_probs_dict[state]:
+               emission_probs[i, j] = emit_probs_dict[state][obs_name]
+       	# Default to 0 if an emission isn't specified
+       	
+   return initial_probs, transition_probs, emission_probs
+
 
 
 def viterbi(obs_seq, states, initial_probs, transition_probs, emission_probs):
