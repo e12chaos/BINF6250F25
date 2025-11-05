@@ -54,12 +54,12 @@ Functions:
 
 - Tiange did a great job documenting her sections of the code, making her logic and design choices easy to follow.
 - I kept a consistent documentation style across my sections for clarity and collaboration.
-- Our modular design allowed the project to be broken into helper functions, which made debugging and scaling much easier.
 - The final implementation successfully reproduces the expected Viterbi output and can easily be extended to more complex HMMs.
 
 
 # Struggles
 - GitHub Integration: RStudio’s Git and GitHub synchronization still caused versioning issues. I had to manually copy files as a workaround.
+- We split up the code and wrote helper functions, but haven't called them in the main function.  I wanted to keep them in case we do want to use them. I think this might be something we tweak going forward but for now they are there just incase. 
 
 # Personal Reflections
 ## Group Leader(Nikaela Aitken)
@@ -68,7 +68,7 @@ Tiange and I each spent time independently thinking through the project before m
 
 We decided early to use separate helper functions to make the code more modular and testable, which paid off throughout development. Tiange was highly responsive, organized, and easy to collaborate with.
 
-I especially enjoyed building the helper functions and thinking through how to structure the code for scalability in future applications. 
+I especially enjoyed building the helper functions and thinking through how to structure the code for scalability in future applications. We just need to figure out how to pull them in now. 
 
 ## Other member
 Other members' reflections on the project
