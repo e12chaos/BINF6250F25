@@ -165,7 +165,7 @@ We decided early to use separate helper functions to make the code more modular 
 
 I especially enjoyed building the helper functions and thinking through how to structure the code for scalability in future applications. We just need to figure out how to pull them in now. 
 
-## Other member(Tiange
+## Other member(Tiange Feng)
 
 Nikaela and I had a very productive collaboration because we both came to our meetings having thoroughly considered the algorithm's design. This allowed us to align on the code's structure almost immediately. The primary technical challenge for me was to manage how the indices for states and observations corresponded across the initial, transition, and emission matrices. A related hurdle was implementing the backpointer, which was solved after reviewing previous projects. This process was a valuable learning experience for me.
 
