@@ -13,20 +13,24 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=TRUE)
 library('reticulate')
+
 ```
 
 
 
- 
- 
- def convert_hmm_params_to_matrices(
+```{python}
+import numpy as np
+from typing import List, Tuple, Dict
+```
+
+```{python}
+def convert_hmm_params_to_matrices(
    states_list: List[str],
    obs_map: Dict[str, int],
    init_probs_dict: Dict[str, float],
    trans_probs_dict: Dict[str, Dict[str, float]],
    emit_probs_dict: Dict[str, Dict[str, float]]
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-
    """
    Args:
        states_list: An ordered list of state names (e.g., ['I', 'G']).
@@ -35,7 +39,6 @@ library('reticulate')
        init_probs_dict: The dictionary of initial probabilities.
        trans_probs_dict: The nested dictionary of transition probabilities.
        emit_probs_dict: The nested dictionary of emission probabilities.
-
    Returns:
        A tuple of numpy arrays:
        - initial_probs (1D array)
@@ -44,51 +47,144 @@ library('reticulate')
    """
    N = len(states_list)
    M = len(obs_map)
-
    # 1. Create Initial Probabilities array
    initial_probs = np.zeros(N)
    for i, state in enumerate(states_list):
        initial_probs[i] = init_probs_dict.get(state, 0.0)
-
    # 2. Create Transition Matrix
    transition_probs = np.zeros((N, N))
    for i, from_state in enumerate(states_list):
-   	for j, to_state in enumerate(states_list):
-       	# Find the probability of going from_state -> to_state
-       	if from_state in trans_probs_dict and to_state in trans_probs_dict[from_state]:
+       for j, to_state in enumerate(states_list):
+           # Find the probability of going from_state -> to_state
+           if from_state in trans_probs_dict and to_state in trans_probs_dict[from_state]:
                transition_probs[i, j] = trans_probs_dict[from_state][to_state]
-       	# Default to 0 if a transition isn't specified
-       	
+           # Default to 0 if a transition isn't specified
+       
    # 3. Create Emission Matrix
    emission_probs = np.zeros((N, M))
    for i, state in enumerate(states_list):
-   	for obs_name, j in obs_map.items():
-       	# Find the probability of emitting obs_name from state
-       	if state in emit_probs_dict and obs_name in emit_probs_dict[state]:
+       for obs_name, j in obs_map.items():
+           # Find the probability of emitting obs_name from state
+           if state in emit_probs_dict and obs_name in emit_probs_dict[state]:
                emission_probs[i, j] = emit_probs_dict[state][obs_name]
-       	# Default to 0 if an emission isn't specified
-       	
+           # Default to 0 if an emission isn't specified
+       
    return initial_probs, transition_probs, emission_probs
+```
+
+```{python}
+import numpy as np
+from typing import List, Tuple, Dict
+
+def viterbi(
+    obs_seq: List[int],
+    states: List[str],
+    initial_probs: np.ndarray,
+    transition_probs: np.ndarray,
+    emission_probs: np.ndarray
+) -> Tuple[List[str], float]:
+    """
+    Finds the most likely sequence of hidden states given a sequence of observations.
 
 
-
-def viterbi(obs_seq, states, initial_probs, transition_probs, emission_probs):
-    '''Viterbi algorithm for finding most likely hidden state sequence
-    
     Args:
-        obs_seq (list): observation sequence as integer indices
-        states (list): all possible hidden state names
-        initial_probs (numpy array): 1D array of initial probabilities
-        transition_probs (numpy array): 2D NxN transition matrix
-        emission_probs (numpy array): 2D NxM emission matrix
-    
+        obs_seq: A list of integers representing the observation sequence.
+        states: A list of the names of the hidden states.
+        initial_probs: A 1D numpy array of initial state probabilities.
+        transition_probs: A 2D numpy matrix (NxN) of state transition probabilities,
+                          where N is the number of states.
+        emission_probs: A 2D numpy matrix (NxM) of observation emission probabilities,
+                        where N is the number of states and M is the number of
+                        possible observations.
+
     Returns:
-        best_path (list): most likely hidden state sequence
-        best_path_log_prob (float): log-probability of most likely path
-    '''
-    pass
+        A tuple containing:
+        - The most likely sequence of hidden state names (List[str]).
+        - The log-probability of this sequence (float).
+    """
 
+    # --- 0. Setup and Log-Space Conversion ---
+    with np.errstate(divide='ignore'):  # Ignore divide-by-zero warnings for log(0)
+        log_initial = np.log(initial_probs)
+        log_transition = np.log(transition_probs)
+        log_emission = np.log(emission_probs)
 
+    T = len(obs_seq)  # Length of the observation sequence
+    N = len(states)   # Number of hidden states
+
+    # --- 1. Initialization ---
+    # Set up a probability matrix..."
+    # This matrix (viterbi_table) stores the log-probability of the most
+    # likely path ending in state 'j' at time 't'.
+    viterbi_table = np.zeros((T, N))
+
+    # Initialize traceback matrix for path reconstruction
+    # This matrix stores the *index* of the previous state that led
+    # to the max probability for the current state.
+    backpointers = np.zeros((T, N), dtype=int)
+
+    # For the first time step (t=0):
+    # The log-prob of a state is its initial log-prob + the log-prob
+    # of emitting the first observation from that state.
+    first_obs = obs_seq[0]
+    viterbi_table[0, :] = log_initial + log_emission[:, first_obs]
+    # The backpointers for t=0 are just 0, as there's no previous state.
+
+    # --- 2. Recursion ---
+    # For each position and possible state,
+    # calculate the maximum probability"
+    # Loop from the second observation (t=1) to the end.
+    for t in range(1, T):
+        current_obs = obs_seq[t]
+
+        # Loop through each *current* state 'j'
+        for j in range(N):
+            # Calculate the log-prob of transitioning from *every*
+            # previous state 'i' to the current state 'j'.
+            #
+            # log_prob(from_i_to_j) = viterbi_table[t-1, i] + log_transition[i, j]
+            #
+            # viterbi_table[t-1, :] is the 1D array of log-probs from the previous step.
+            # log_transition[:, j] is the 1D array of probs of transitioning *to* state j.
+            # We add them element-wise.
+            prob_from_prev_states = viterbi_table[t-1, :] + log_transition[:, j]
+
+            # Find the *maximum* probability among all possible previous states.
+            max_prob = np.max(prob_from_prev_states)
+
+            # Find the *index* (the state) of that maximum probability.
+            # This is the "traceback pointer".
+            best_prev_state = np.argmax(prob_from_prev_states)
+
+            # Store the final log-prob for this step (t, j)
+            viterbi_table[t, j] = max_prob + log_emission[j, current_obs]
+            backpointers[t, j] = best_prev_state
+
+    # --- 3. Termination ---
+    # Identify the final state with the highest probability
+    best_path_log_prob = np.max(viterbi_table[T-1, :])
+
+    # Find the *index* of the state that gave this highest probability.
+    last_state = np.argmax(viterbi_table[T-1, :])
+
+    # --- 4. Traceback Mechanism ---
+    # Trace back through the matrix to reconstruct the optimal path
+    best_path = []
+    current_state = last_state
+
+    # Loop backwards from the last time step (T-1) down to 0
+    for t in range(T - 1, -1, -1):
+        # Add the state *name* to the beginning of the path list
+        best_path.insert(0, states[current_state])
+
+        # Use the backpointers matrix to find the state we came from
+        current_state = backpointers[t, current_state]
+
+    return best_path, best_path_log_prob
+```
+ 
+ 
+```{python}
 def initialize(obs_seq, states, log_initial, log_emission):
     '''Initialize viterbi table and backpointers for first observation
     
@@ -102,9 +198,24 @@ def initialize(obs_seq, states, log_initial, log_emission):
         viterbi_table (numpy array): initialized probability matrix
         backpointers (numpy array): initialized traceback matrix
     '''
-    pass
+    T = len(obs_seq)  #Length of the observation sequence
+    N = len(states)   # Number of states
+    
+    # Create the matrices
+    viterbi_table = np.zeros((T, N))
+    backpointers = np.zeros((T, N), dtype=int)
+    
+    # Initialize first observation
+    first_obs = obs_seq[0]
+    viterbi_table[0, :] = log_initial + log_emission[:, first_obs]
+    
+    return viterbi_table, backpointers
+
+```
+ 
 
 
+```{python}
 def recurse(viterbi_table, backpointers, obs_seq, log_transition, log_emission, t):
     '''Perform one recursion step of Viterbi algorithm
     
@@ -119,11 +230,32 @@ def recurse(viterbi_table, backpointers, obs_seq, log_transition, log_emission, 
     Returns:
         None: modifies viterbi_table and backpointers in place
     '''
-    pass
+    current_obs = obs_seq[t]
+    N = viterbi_table.shape[1]
+    
+    # Loop through each current state
+    for j in range(N):
+        # Calculate probabilities from all previous  states
+        prob_from_prev_states = viterbi_table[t-1, :] + log_transition[:, j]
+        
+        #Find maximum and best previous state
+        max_prob = np.max(prob_from_prev_states)
+        best_prev_state = np.argmax(prob_from_prev_states)
+        
+        #Store results.
+        viterbi_table[t, j] = max_prob + log_emission[j, current_obs]
+        backpointers[t, j] = best_prev_state
+
+```
 
 
+
+```{python}
 def terminate(viterbi_table, states):
     '''Find most likely final state
+    
+    After filling the entire viterbi table, this identifies which state
+    has the highest probability at the final time step.
     
     Args:
         viterbi_table (numpy array): completed probability matrix
@@ -133,9 +265,24 @@ def terminate(viterbi_table, states):
         last_state (int): index of final state with highest probability
         best_path_log_prob (float): maximum log probability at final position
     '''
-    pass
+    # Get the length of the sequence(number of rows in table )
+    T = viterbi_table.shape[0]
+    
+    # Look at the last  row of the viterbi table (t = T-1)-- This contains the probabilities of ending in each state
+    
+    # We need to find the maximum probability in the last row
+    best_path_log_prob = np.max(viterbi_table[T-1, :])
+    
+    #Find which state (column index) has this maximum probability
+    last_state = np.argmax(viterbi_table[T-1, :])
+    
+    # Example: if last_state = 1, it means state 'G' has highest probability at the end
+    
+    return last_state, best_path_log_prob
+```
 
 
+```{python}
 def traceback(backpointers, states, last_state):
     '''Reconstruct most likely state sequence
     
@@ -147,9 +294,22 @@ def traceback(backpointers, states, last_state):
     Returns:
         best_path (list): most likely hidden state sequence
     '''
-    pass
+    T = backpointers.shape[0]
+    best_path = []
+    current_state = last_state
+    
+    # Loop backwards through time
+    for t in range(T - 1, -1, -1):
+        best_path.insert(0, states[current_state])
+        current_state = backpointers[t, current_state]
+    
+    return best_path
+
+```
 
 
+
+```{python}
 def log_probability(prob):
     '''Convert probability to log space
     
@@ -159,9 +319,13 @@ def log_probability(prob):
     Returns:
         log_prob (float): log probability or -inf for zero
     '''
-    pass
+    if prob == 0:
+        return float('-inf')
+    return np.log(prob)
+```
 
 
+```{python}
 def get_emission_prob(state, obs, emit_probs, use_log=True):
     '''Get emission probability for state and observation
     
@@ -174,9 +338,19 @@ def get_emission_prob(state, obs, emit_probs, use_log=True):
     Returns:
         prob (float): emission probability
     '''
-    pass
+    prob = emit_probs.get(state, {}).get(obs, 0.0)
+    
+    if use_log:
+        return log_probability(prob)
+    return prob
+```
 
 
+
+
+
+
+```{python}
 def get_transition_prob(from_state, to_state, trans_probs, use_log=True):
     '''Get transition probability between states
     
@@ -189,4 +363,85 @@ def get_transition_prob(from_state, to_state, trans_probs, use_log=True):
     Returns:
         prob (float): transition probability
     '''
-    pass
+    prob = trans_probs.get(from_state, {}).get(to_state, 0.0)
+    
+    
+    if use_log:
+        return log_probability(prob)
+    return prob
+```
+
+
+
+
+```{python}
+if __name__ == "__main__":
+
+    # --- 1. Define HMM Parameters using Dictionaries ---
+
+    # DNA sequences are used as an example
+    states = ['I', 'G']
+
+    # Observations:
+    obs_map = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+
+    # Observed sequence
+    obs_seq_str = "GGCACTGAA"
+    
+    # Example initial probabilities
+    init_probs_dict = {
+        "I": 0.2,
+        "G": 0.8
+    }
+
+    # Example transition probabilities
+    trans_probs_dict = {
+        "I": {"I": 0.7, "G": 0.3},
+        "G": {"I": 0.1, "G": 0.9}
+    }
+
+    # Example emission probabilities
+    emit_probs_dict = {
+        "I": {"A": 0.1, "C": 0.4, "G": 0.4, "T": 0.1},
+        "G": {"A": 0.3, "C": 0.2, "G": 0.2, "T": 0.3}
+    }
+
+    # --- 2. Convert Dictionaries to Numpy Matrices ---
+    initial_probs, transition_probs, emission_probs = convert_hmm_params_to_matrices(
+        states,
+        obs_map,
+        init_probs_dict,
+        trans_probs_dict,
+        emit_probs_dict
+    )
+
+    # --- 3. Run the Viterbi Algorithm ---
+    
+    # Convert string observations to integer indices
+    obs_seq = [obs_map[o] for o in obs_seq_str]
+
+    print("--- Viterbi Algorithm for Hidden Markov Models ---")
+    print(f"Observation Sequence: {list(obs_seq_str)}")
+
+    # Display the matrices just built
+    print("\n--- Converted HMM Matrices ---")
+    print(f"States: {states}")
+    print(f"Initial Probs:\n{initial_probs}")
+    print(f"Transition Probs:\n{transition_probs}")
+    print(f"Emission Probs:\n{emission_probs}")
+
+    most_likely_path, log_prob = viterbi(
+        obs_seq,
+        states,
+        initial_probs,
+        transition_probs,
+        emission_probs
+    )
+
+    print("\n--- Results ---")
+    print(f"Most Likely Hidden State Path: {most_likely_path}")
+    print(f"Log-Probability of this path: {log_prob:.4f}")
+
+    print(f"Probability of this path: {np.exp(log_prob):.2e}")
+```
+
