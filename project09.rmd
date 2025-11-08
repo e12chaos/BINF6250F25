@@ -1,0 +1,136 @@
+---
+title: "Project 09: Hidden Markov Models + Forward, Backward, and Forward-Backward Algorithms"
+author: "Nikaela Aitken & Tiange Feng"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+library('reticulate')
+
+```
+
+
+
+```{python}
+import numpy as np
+from typing import List, Tuple, Dict
+```
+
+```{python}
+def convert_hmm_params_to_matrices(
+   states_list: List[str],
+   obs_map: Dict[str, int],
+   init_probs_dict: Dict[str, float],
+   trans_probs_dict: Dict[str, Dict[str, float]],
+   emit_probs_dict: Dict[str, Dict[str, float]]
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+   """
+   Args:
+       states_list: An ordered list of state names (e.g., ['I', 'G']).
+       obs_map: A dictionary mapping observation names to their indices
+                (e.g., {'A': 0, 'C': 1, ...}).
+       init_probs_dict: The dictionary of initial probabilities.
+       trans_probs_dict: The nested dictionary of transition probabilities.
+       emit_probs_dict: The nested dictionary of emission probabilities.
+   Returns:
+       A tuple of numpy arrays:
+       - initial_probs (1D array)
+       - transition_probs (2D array)
+       - emission_probs (2D array)
+   """
+   N = len(states_list)
+   M = len(obs_map)
+   # 1. Create Initial Probabilities array
+   initial_probs = np.zeros(N)
+   for i, state in enumerate(states_list):
+       initial_probs[i] = init_probs_dict.get(state, 0.0)
+   # 2. Create Transition Matrix
+   transition_probs = np.zeros((N, N))
+   for i, from_state in enumerate(states_list):
+       for j, to_state in enumerate(states_list):
+           # Find the probability of going from_state -> to_state
+           if from_state in trans_probs_dict and to_state in trans_probs_dict[from_state]:
+               transition_probs[i, j] = trans_probs_dict[from_state][to_state]
+           # Default to 0 if a transition isn't specified
+       
+   # 3. Create Emission Matrix
+   emission_probs = np.zeros((N, M))
+   for i, state in enumerate(states_list):
+       for obs_name, j in obs_map.items():
+           # Find the probability of emitting obs_name from state
+           if state in emit_probs_dict and obs_name in emit_probs_dict[state]:
+               emission_probs[i, j] = emit_probs_dict[state][obs_name]
+           # Default to 0 if an emission isn't specified
+       
+   return initial_probs, transition_probs, emission_probs
+```
+
+
+```{python}
+def log_probability(prob):
+    '''Convert probability to log space
+    
+    Args:
+        prob (float): probability value (0 to 1)
+    
+    Returns:
+        log_prob (float): log probability or -inf for zero
+    '''
+    if prob == 0:
+        return float('-inf')
+    return np.log(prob)
+```
+
+
+```{python}
+def get_emission_prob(state, obs, emit_probs, use_log=True):
+    '''Get emission probability for state and observation
+    
+    Args:
+        state (str): hidden state
+        obs (str): observation symbol
+        emit_probs (dict): emission probabilities
+        use_log (bool): return log probability, default = True
+    
+    Returns:
+        prob (float): emission probability
+    '''
+    prob = emit_probs.get(state, {}).get(obs, 0.0)
+    
+    if use_log:
+        return log_probability(prob)
+    return prob
+```
+
+
+
+
+
+
+```{python}
+def get_transition_prob(from_state, to_state, trans_probs, use_log=True):
+    '''Get transition probability between states
+    
+    Args:
+        from_state (str): previous state
+        to_state (str): current state
+        trans_probs (dict): transition probabilities
+        use_log (bool): return log probability, default = True
+    
+    Returns:
+        prob (float): transition probability
+    '''
+    prob = trans_probs.get(from_state, {}).get(to_state, 0.0)
+    
+    
+    if use_log:
+        return log_probability(prob)
+    return prob
+```
