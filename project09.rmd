@@ -9,6 +9,42 @@ output:
     toc_depth: 2
 ---
 
+# New algorithms
+#def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Forward algorithm - probability of observations up to time t'''
+    # 1. Initialize alpha[0]
+    # 2. Recurse forward through time
+    # 3. Sum final column for sequence probability
+    pass
+
+#def backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Backward algorithm - probability of future observations'''
+    # 1. Initialize beta[T-1] = 1
+    # 2. Recurse backward through time
+    # 3. Calculate sequence probability at t=0
+    pass
+
+#def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Forward-Backward - posterior probabilities at each position'''
+    # 1. Run forward algorithm
+    # 2. Run backward algorithm
+    # 3. Combine: gamma[t][i] = alpha[t][i] * beta[t][i] / P(sequence)
+    # 4. Normalize each time step
+    pass
+
+# Helper functions (optional but useful)
+#def scale_forward(alpha):
+    '''Prevent numerical underflow in forward algorithm'''
+    pass
+
+#def scale_backward(beta):
+    '''Prevent numerical underflow in backward algorithm'''
+    pass
+
+
+
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=TRUE)
@@ -134,3 +170,77 @@ def get_transition_prob(from_state, to_state, trans_probs, use_log=True):
         return log_probability(prob)
     return prob
 ```
+
+
+
+
+
+
+
+def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Forward algorithm - calculates alpha values
+    
+    Very similar to Viterbi, but:
+    - Use SUM instead of MAX
+    - No backpointers needed
+    
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+    
+    Returns:
+        alpha (numpy array): forward probability matrix (T x N)
+        sequence_prob (float): total probability of observation sequence
+    '''
+    # Similar to Viterbi initialization
+    # But in recursion: SUM over previous states instead of MAX
+    pass
+
+
+def backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Backward algorithm - calculates beta values
+    
+    Like Forward but working backwards:
+    - Start from the END with beta[T-1] = 1
+    - Work backwards through time
+    - Use SUM over next states
+    
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+    
+    Returns:
+        beta (numpy array): backward probability matrix (T x N)
+        sequence_prob (float): total probability of observation sequence
+    '''
+    pass
+
+
+def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Forward-Backward algorithm - calculates gamma values
+    
+    Combines Forward and Backward:
+    - Run forward() to get alpha
+    - Run backward() to get beta
+    - Combine: gamma = (alpha * beta) / P(sequence)
+    
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+    
+    Returns:
+        gamma (numpy array): posterior probability matrix (T x N)
+        alpha (numpy array): forward probabilities
+        beta (numpy array): backward probabilities
+        sequence_prob (float): probability of observation sequence
+    '''
+    pass
