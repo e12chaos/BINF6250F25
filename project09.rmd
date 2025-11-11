@@ -32,15 +32,6 @@ output:
     # 4. Normalize each time step
     pass
 
-# Helper functions (optional but useful)
-#def scale_forward(alpha):
-    '''Prevent numerical underflow in forward algorithm'''
-    pass
-
-#def scale_backward(beta):
-    '''Prevent numerical underflow in backward algorithm'''
-    pass
-
 
 
 
