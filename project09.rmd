@@ -173,16 +173,12 @@ def get_transition_prob(from_state, to_state, trans_probs, use_log=True):
 
 
 
-
-
-
-
+```{python}
 def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
     '''Forward algorithm - calculates alpha values
     
-    Very similar to Viterbi, but:
-    - Use SUM instead of MAX
-    - No backpointers needed
+    Calculates the probability of observing the sequence up to time t
+    and being in each state at time t.
     
     Args:
         obs_seq (list): observation sequence as integer indices
@@ -195,9 +191,56 @@ def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
         alpha (numpy array): forward probability matrix (T x N)
         sequence_prob (float): total probability of observation sequence
     '''
-    # Similar to Viterbi initialization
-    # But in recursion: SUM over previous states instead of MAX
-    pass
+#We see a sequence of observations (things we see), but the system is actually in hidden states (things we can't see).After each observed thing, what is the probability we are in each hidden state right now? Look at where we could have been before.Look at how likely it is to move to this new state. Add them all up (not choose just one like Viterbi does). Then multiply by the chance of producing the observation at this new state.
+  
+    #SETUP. Get dimensions (same as Viterbi above)
+    T = len(obs_seq)  # Length of observation sequence
+    N = len(states)   # Number of hidden states
+    
+    # Convert to log space 
+    with np.errstate(divide='ignore'):  # Ignore divide-by-zero warnings for log(0)
+        log_initial = np.log(initial_probs)
+        log_transition = np.log(transition_probs)
+        log_emission = np.log(emission_probs)
+    
+    # Create alpha matrix - iitiliaze with all 0's
+    alpha = np.zeros((T, N))
+    
+  
+    #For the first observation, calculate:
+    # alpha[0][i] = P(start in state i) * P(emit first obs | state i)
+    first_obs = obs_seq[0]
+    alpha[0, :] = log_initial + log_emission[:, first_obs]
+    
+   
+    # This is where it differs from Viterbi! Viterbi uses MAX, Forward uses SUM: At each step, instead of choosing the best path, we consider every possible path, and add up their probabilities.
+    
+    # Loop through each time step
+    for t in range(1, T):
+        current_obs = obs_seq[t]
+        
+        # Loop through each current state 
+        for j in range(N):
+            # Calculate probabilities from ALL previous states
+            prob_from_prev_states = alpha[t-1, :] + log_transition[:, j]
+            #probabilities of being in every previous state at time t−1: (alpha[t-1, :])
+            #probability of moving from each previous state
+           
+            
+            # logaddexp computes: log(exp(a) + exp(b))
+            sum_prob = np.logaddexp.reduce(prob_from_prev_states)#Add them all up (not choose just one like Viterbi does)
+            
+            # Add emission probability
+            alpha[t, j] = sum_prob + log_emission[j, current_obs]
+    
+    #Sum the final column to get total sequence probability
+    sequence_prob = np.logaddexp.reduce(alpha[T-1, :])
+    
+    return alpha, sequence_prob
+```
+
+
+
 
 
 def backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
@@ -244,3 +287,5 @@ def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_
         sequence_prob (float): probability of observation sequence
     '''
     pass
+
+
