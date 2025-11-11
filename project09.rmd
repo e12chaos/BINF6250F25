@@ -9,32 +9,6 @@ output:
     toc_depth: 2
 ---
 
-# New algorithms
-#def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
-    '''Forward algorithm - probability of observations up to time t'''
-    # 1. Initialize alpha[0]
-    # 2. Recurse forward through time
-    # 3. Sum final column for sequence probability
-    pass
-
-#def backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
-    '''Backward algorithm - probability of future observations'''
-    # 1. Initialize beta[T-1] = 1
-    # 2. Recurse backward through time
-    # 3. Calculate sequence probability at t=0
-    pass
-
-#def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
-    '''Forward-Backward - posterior probabilities at each position'''
-    # 1. Run forward algorithm
-    # 2. Run backward algorithm
-    # 3. Combine: gamma[t][i] = alpha[t][i] * beta[t][i] / P(sequence)
-    # 4. Normalize each time step
-    pass
-
-
-
-
 
 
 ```{r setup, include=FALSE}
