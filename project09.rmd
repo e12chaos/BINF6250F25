@@ -305,16 +305,12 @@ def backward(
     return log_beta_table
 ```
 
-
-
-
+```{python}
 def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
-    '''Forward-Backward algorithm - calculates gamma values
+    '''Forward-Backward algorithm - calculates posterior probabilities (gamma values)
     
-    Combines Forward and Backward:
-    - Run forward() to get alpha
-    - Run backward() to get beta
-    - Combine: gamma = (alpha * beta) / P(sequence)
+    Combines forward and backward algorithms to determine the probability
+    of being in each state at each time, given the entire observation sequence.
     
     Args:
         obs_seq (list): observation sequence as integer indices
@@ -329,6 +325,42 @@ def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_
         beta (numpy array): backward probabilities
         sequence_prob (float): probability of observation sequence
     '''
-    pass
+    
+    #Forward looks left→right (what’s happened so far).
+    #Backward looks right→left (what’s still to come).
+    #Gamma fuses both views so you know, at each time step, how likely each hidden state is given the entire sequence.
+    
+    #Run Forward Algorithm
+    alpha, forward_prob = forward(obs_seq, states, initial_probs, transition_probs, emission_probs)
+    
+    #Run Backward Algorithm.
+    beta, backward_prob = backward(obs_seq, states, initial_probs, transition_probs, emission_probs)
+    
+    # Verify == sanity check : Both ways of computing the total sequence probability should match (small rounding differences are expected but  if they don’t, something’s off.
+    if not np.isclose(forward_prob, backward_prob, rtol=1e-3):
+        print(f"Warning: Forward prob ({forward_prob:.6f}) != Backward prob ({backward_prob:.6f})")
+    
+    # Use forward probability
+    sequence_prob = forward_prob
+    
+  #Calculate the Gamma
+    T = len(obs_seq)
+    N = len(states)
+    gamma = np.zeros((T, N))
+    
+    # Combine alpha and beta for each time and  for each state
+    for t in range(T):
+        for i in range(N):
+            # In log space: multiply = add, divide = subtract
+            gamma[t, i] = alpha[t, i] + beta[t, i] - sequence_prob
+    
+    #Normaliz Convert back to probability space
+    for t in range(T):
+        gamma_probs = np.exp(gamma[t, :])
+        gamma_probs = gamma_probs / np.sum(gamma_probs)
+        gamma[t, :] = gamma_probs
+    
+    return gamma, alpha, beta, sequence_prob
+```
 
 
