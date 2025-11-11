@@ -231,29 +231,81 @@ def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
 ```
 
 
+```{python}
+def backward(
+    obs_seq: List[int],
+    states: List[str],
+    transition_probs: np.ndarray,
+    emission_probs: np.ndarray
+) -> np.ndarray:
+    """
+    Calculates the backward log-probabilities for an HMM.
+    (Calculates log(P(obs[t+1]...obs[T] | state[t] = i)))
 
-
-
-def backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
-    '''Backward algorithm - calculates beta values
-    
-    Like Forward but working backwards:
-    - Start from the END with beta[T-1] = 1
-    - Work backwards through time
-    - Use SUM over next states
-    
     Args:
-        obs_seq (list): observation sequence as integer indices
-        states (list): all possible hidden state names
-        initial_probs (numpy array): 1D array of initial probabilities
-        transition_probs (numpy array): 2D NxN transition matrix
-        emission_probs (numpy array): 2D NxM emission matrix
-    
+        obs_seq: List of observation indices.
+        states: List of state names.
+        transition_probs: 2D array (NxN) of state transition probabilities.
+        emission_probs: 2D array (NxM) of observation emission probabilities.
+
     Returns:
-        beta (numpy array): backward probability matrix (T x N)
-        sequence_prob (float): total probability of observation sequence
-    '''
-    pass
+        A 2D numpy matrix (T x N) containing the log-backward probabilities.
+    """
+
+    # --- 0. Setup and Log-Space Conversion ---
+    with np.errstate(divide='ignore'):  # Ignore divide-by-zero warnings for log(0)
+        log_transition = np.log(transition_probs)
+        log_emission = np.log(emission_probs)
+
+    T = len(obs_seq)
+    N = len(states)
+
+    # Create beta_table (T x N) to store log-probabilities
+    log_beta_table = np.zeros((T, N))
+
+    # --- 1. Initialize (t=T-1, the last time step) ---
+    # The pseudo code sets beta[T, i] = 1.
+    # In log-space, log(1) = 0.
+    # np.zeros already set this, so log_beta_table[T-1, :] is already [0.0, 0.0, ...]
+    log_beta_table[T - 1, :] = 0.0
+
+    # --- 2. Recursion (t=T-2 down to 0) ---
+    # loop from the second-to-last time step backwards to the first.
+    # Python's range(T - 2, -1, -1) goes from T-2, T-3, ..., 0
+    for t in range(T - 2, -1, -1):
+        
+        # the observation at time t+1
+        # (the *future* observation for this step)
+        obs_at_t_plus_1 = obs_seq[t + 1]
+
+        # Loop through each *current* state 'i'
+        for i in range(N):
+            
+            # calculate:
+            # log( sum_j( A[i,j] * B[j, obs] * beta[t+1, j] ) )
+            # --> "log-sum-exp" of:
+            # log(A[i,j]) + log(B[j, obs]) + log(beta[t+1, j])
+            
+            # This vector holds each term (for j=0, j=1, ...)
+            terms_for_sum = []
+            for j in range(N): # Loop through each *next* state 'j'
+                term = log_transition[i, j] + \
+                       log_emission[j, obs_at_t_plus_1] + \
+                       log_beta_table[t + 1, j]
+                terms_for_sum.append(term)
+            
+            # perform a numerically stable log-sum-exp
+            v = np.array(terms_for_sum)
+            m = np.max(v)
+            if m == -np.inf: # If all terms are log(0)
+                log_beta_table[t, i] = -np.inf
+            else:
+                log_beta_table[t, i] = m + np.log(np.sum(np.exp(v - m)))
+
+    return log_beta_table
+```
+
+
 
 
 def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
