@@ -1,0 +1,340 @@
+---
+title: "Project 09: Hidden Markov Models + Forward, Backward, and Forward-Backward Algorithms"
+author: "Nikaela Aitken & Tiange Feng"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+library('reticulate')
+
+```
+
+
+
+```{python}
+import numpy as np
+from typing import List, Tuple, Dict
+```
+
+```{python}
+def convert_hmm_params_to_matrices(
+   states_list: List[str],
+   obs_map: Dict[str, int],
+   init_probs_dict: Dict[str, float],
+   trans_probs_dict: Dict[str, Dict[str, float]],
+   emit_probs_dict: Dict[str, Dict[str, float]]
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+   """
+   Args:
+       states_list: An ordered list of state names (e.g., ['I', 'G']).
+       obs_map: A dictionary mapping observation names to their indices
+                (e.g., {'A': 0, 'C': 1, ...}).
+       init_probs_dict: The dictionary of initial probabilities.
+       trans_probs_dict: The nested dictionary of transition probabilities.
+       emit_probs_dict: The nested dictionary of emission probabilities.
+   Returns:
+       A tuple of numpy arrays:
+       - initial_probs (1D array)
+       - transition_probs (2D array)
+       - emission_probs (2D array)
+   """
+   N = len(states_list)
+   M = len(obs_map)
+   # 1. Create Initial Probabilities array
+   initial_probs = np.zeros(N)
+   for i, state in enumerate(states_list):
+       initial_probs[i] = init_probs_dict.get(state, 0.0)
+   # 2. Create Transition Matrix
+   transition_probs = np.zeros((N, N))
+   for i, from_state in enumerate(states_list):
+       for j, to_state in enumerate(states_list):
+           # Find the probability of going from_state -> to_state
+           if from_state in trans_probs_dict and to_state in trans_probs_dict[from_state]:
+               transition_probs[i, j] = trans_probs_dict[from_state][to_state]
+           # Default to 0 if a transition isn't specified
+       
+   # 3. Create Emission Matrix
+   emission_probs = np.zeros((N, M))
+   for i, state in enumerate(states_list):
+       for obs_name, j in obs_map.items():
+           # Find the probability of emitting obs_name from state
+           if state in emit_probs_dict and obs_name in emit_probs_dict[state]:
+               emission_probs[i, j] = emit_probs_dict[state][obs_name]
+           # Default to 0 if an emission isn't specified
+       
+   return initial_probs, transition_probs, emission_probs
+```
+
+
+```{python}
+def log_probability(prob):
+    '''Convert probability to log space
+    
+    Args:
+        prob (float): probability value (0 to 1)
+    
+    Returns:
+        log_prob (float): log probability or -inf for zero
+    '''
+    if prob == 0:
+        return float('-inf')
+    return np.log(prob)
+```
+
+
+```{python}
+def get_emission_prob(state, obs, emit_probs, use_log=True):
+    '''Get emission probability for state and observation
+    
+    Args:
+        state (str): hidden state
+        obs (str): observation symbol
+        emit_probs (dict): emission probabilities
+        use_log (bool): return log probability, default = True
+    
+    Returns:
+        prob (float): emission probability
+    '''
+    prob = emit_probs.get(state, {}).get(obs, 0.0)
+    
+    if use_log:
+        return log_probability(prob)
+    return prob
+```
+
+
+
+
+
+
+```{python}
+def get_transition_prob(from_state, to_state, trans_probs, use_log=True):
+    '''Get transition probability between states
+    
+    Args:
+        from_state (str): previous state
+        to_state (str): current state
+        trans_probs (dict): transition probabilities
+        use_log (bool): return log probability, default = True
+    
+    Returns:
+        prob (float): transition probability
+    '''
+    prob = trans_probs.get(from_state, {}).get(to_state, 0.0)
+    
+    
+    if use_log:
+        return log_probability(prob)
+    return prob
+```
+
+
+
+```{python}
+def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Forward algorithm - calculates alpha values
+    
+    Calculates the probability of observing the sequence up to time t
+    and being in each state at time t.
+    
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+    
+    Returns:
+        alpha (numpy array): forward probability matrix (T x N)
+        sequence_prob (float): total probability of observation sequence
+    '''
+#We see a sequence of observations (things we see), but the system is actually in hidden states (things we can't see).After each observed thing, what is the probability we are in each hidden state right now? Look at where we could have been before.Look at how likely it is to move to this new state. Add them all up (not choose just one like Viterbi does). Then multiply by the chance of producing the observation at this new state.
+  
+    #SETUP. Get dimensions (same as Viterbi above)
+    T = len(obs_seq)  # Length of observation sequence
+    N = len(states)   # Number of hidden states
+    
+    # Convert to log space 
+    with np.errstate(divide='ignore'):  # Ignore divide-by-zero warnings for log(0)
+        log_initial = np.log(initial_probs)
+        log_transition = np.log(transition_probs)
+        log_emission = np.log(emission_probs)
+    
+    # Create alpha matrix - iitiliaze with all 0's
+    alpha = np.zeros((T, N))
+    
+  
+    #For the first observation, calculate:
+    # alpha[0][i] = P(start in state i) * P(emit first obs | state i)
+    first_obs = obs_seq[0]
+    alpha[0, :] = log_initial + log_emission[:, first_obs]
+    
+   
+    # This is where it differs from Viterbi! Viterbi uses MAX, Forward uses SUM: At each step, instead of choosing the best path, we consider every possible path, and add up their probabilities.
+    
+    # Loop through each time step
+    for t in range(1, T):
+        current_obs = obs_seq[t]
+        
+        # Loop through each current state 
+        for j in range(N):
+            # Calculate probabilities from ALL previous states
+            prob_from_prev_states = alpha[t-1, :] + log_transition[:, j]
+            #probabilities of being in every previous state at time t−1: (alpha[t-1, :])
+            #probability of moving from each previous state
+           
+            
+            # logaddexp computes: log(exp(a) + exp(b))
+            sum_prob = np.logaddexp.reduce(prob_from_prev_states)#Add them all up (not choose just one like Viterbi does)
+            
+            # Add emission probability
+            alpha[t, j] = sum_prob + log_emission[j, current_obs]
+    
+    #Sum the final column to get total sequence probability
+    sequence_prob = np.logaddexp.reduce(alpha[T-1, :])
+    
+    return alpha, sequence_prob
+```
+
+
+```{python}
+def backward(
+    obs_seq: List[int],
+    states: List[str],
+    transition_probs: np.ndarray,
+    emission_probs: np.ndarray
+) -> np.ndarray:
+    """
+    Calculates the backward log-probabilities for an HMM.
+    (Calculates log(P(obs[t+1]...obs[T] | state[t] = i)))
+
+    Args:
+        obs_seq: List of observation indices.
+        states: List of state names.
+        transition_probs: 2D array (NxN) of state transition probabilities.
+        emission_probs: 2D array (NxM) of observation emission probabilities.
+
+    Returns:
+        A 2D numpy matrix (T x N) containing the log-backward probabilities.
+    """
+
+    # --- 0. Setup and Log-Space Conversion ---
+    with np.errstate(divide='ignore'):  # Ignore divide-by-zero warnings for log(0)
+        log_transition = np.log(transition_probs)
+        log_emission = np.log(emission_probs)
+
+    T = len(obs_seq)
+    N = len(states)
+
+    # Create beta_table (T x N) to store log-probabilities
+    log_beta_table = np.zeros((T, N))
+
+    # --- 1. Initialize (t=T-1, the last time step) ---
+    # The pseudo code sets beta[T, i] = 1.
+    # In log-space, log(1) = 0.
+    # np.zeros already set this, so log_beta_table[T-1, :] is already [0.0, 0.0, ...]
+    log_beta_table[T - 1, :] = 0.0
+
+    # --- 2. Recursion (t=T-2 down to 0) ---
+    # loop from the second-to-last time step backwards to the first.
+    # Python's range(T - 2, -1, -1) goes from T-2, T-3, ..., 0
+    for t in range(T - 2, -1, -1):
+        
+        # the observation at time t+1
+        # (the *future* observation for this step)
+        obs_at_t_plus_1 = obs_seq[t + 1]
+
+        # Loop through each *current* state 'i'
+        for i in range(N):
+            
+            # calculate:
+            # log( sum_j( A[i,j] * B[j, obs] * beta[t+1, j] ) )
+            # --> "log-sum-exp" of:
+            # log(A[i,j]) + log(B[j, obs]) + log(beta[t+1, j])
+            
+            # This vector holds each term (for j=0, j=1, ...)
+            terms_for_sum = []
+            for j in range(N): # Loop through each *next* state 'j'
+                term = log_transition[i, j] + \
+                       log_emission[j, obs_at_t_plus_1] + \
+                       log_beta_table[t + 1, j]
+                terms_for_sum.append(term)
+            
+            # perform a numerically stable log-sum-exp
+            v = np.array(terms_for_sum)
+            m = np.max(v)
+            if m == -np.inf: # If all terms are log(0)
+                log_beta_table[t, i] = -np.inf
+            else:
+                log_beta_table[t, i] = m + np.log(np.sum(np.exp(v - m)))
+
+    return log_beta_table
+```
+
+```{python}
+def forward_backward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    '''Forward-Backward algorithm - calculates posterior probabilities (gamma values)
+    
+    Combines forward and backward algorithms to determine the probability
+    of being in each state at each time, given the entire observation sequence.
+    
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+    
+    Returns:
+        gamma (numpy array): posterior probability matrix (T x N)
+        alpha (numpy array): forward probabilities
+        beta (numpy array): backward probabilities
+        sequence_prob (float): probability of observation sequence
+    '''
+    
+    #Forward looks left→right (what’s happened so far).
+    #Backward looks right→left (what’s still to come).
+    #Gamma fuses both views so you know, at each time step, how likely each hidden state is given the entire sequence.
+    
+    #Run Forward Algorithm
+    alpha, forward_prob = forward(obs_seq, states, initial_probs, transition_probs, emission_probs)
+    
+    #Run Backward Algorithm.
+    beta, backward_prob = backward(obs_seq, states, initial_probs, transition_probs, emission_probs)
+    
+    # Verify == sanity check : Both ways of computing the total sequence probability should match (small rounding differences are expected but  if they don’t, something’s off.
+    if not np.isclose(forward_prob, backward_prob, rtol=1e-3):
+        print(f"Warning: Forward prob ({forward_prob:.6f}) != Backward prob ({backward_prob:.6f})")
+    
+    # Use forward probability
+    sequence_prob = forward_prob
+    
+  #Calculate the Gamma
+    T = len(obs_seq)
+    N = len(states)
+    gamma = np.zeros((T, N))
+    
+    # Combine alpha and beta for each time and  for each state
+    for t in range(T):
+        for i in range(N):
+            # In log space: multiply = add, divide = subtract
+            gamma[t, i] = alpha[t, i] + beta[t, i] - sequence_prob
+    
+    #Normaliz Convert back to probability space
+    for t in range(T):
+        gamma_probs = np.exp(gamma[t, :])
+        gamma_probs = gamma_probs / np.sum(gamma_probs)
+        gamma[t, :] = gamma_probs
+    
+    return gamma, alpha, beta, sequence_prob
+```
+
+
