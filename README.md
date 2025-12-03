@@ -379,8 +379,8 @@ I think one of the biggest takeaways from this project is that unsupervised lear
 
 This is definitely a project I would like to expand on in the future. The framework we built could be adapted to other genomic regions or even entirely different types of sequential data, and I'm excited about the possibilities for future applications.
 
-## Other member
-Other members' reflections on the project
+## Other member (Tiange Feng)
+A big thank you to Nikaela; we worked in sync as always. I feel that for me, the main challenge was understanding the relationship between the Baum-Welch algorithm and the Forward/Backward algorithms we learned, as well as its similarities and differences with the Gibbs Sampling max-searching approach. 
 
 # Generative AI Appendix
 claude sonnet 4.5 "help me organize my readme using markdown." 
