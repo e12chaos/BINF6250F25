@@ -364,10 +364,11 @@ function generate_normalized_random_vector(size):
 ```
 
 # Successes
-Description of the team's learning points
+* I really enjoyed the real world application that I was able to implement by working with UTR data.
+* the script to pull and parse data
 
 # Struggles
-Description of the stumbling blocks the team experienced
+* The math and understanding the overall concept
 
 # Personal Reflections
 ## Group Leader(Nikaela Aitken)
