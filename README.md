@@ -371,10 +371,16 @@ Description of the stumbling blocks the team experienced
 
 # Personal Reflections
 ## Group Leader(Nikaela Aitken)
-Group leader's reflection on the project
+I found this project very exciting because of its obvious applications in unsupervised machine learning. I was particularly interested in applying the Baum-Welch algorithm to UTR sequences, and I'm grateful I had the holiday week to work on it. this project required significant time and careful thought to implement properly.
+
+Tiange's excellent outline was invaluable in helping me work through the algorithm step by step. The pseudocode structure made it much easier to translate the mathematical concepts into working code, and our division of labor allowed us to tackle both the core algorithm and the biological application effectively.
+
+I think one of the biggest takeaways from this project is that unsupervised learning algorithms like Baum-Welch can discover meaningful patterns in data without labeled examples. This is particularly powerful for biological sequences where we often don't know the "ground truth" annotations. The algorithm found structure in UTR sequences purely from the sequences themselves, which is both computationally elegant and biologically useful.
+
+This is definitely a project I would like to expand on in the future. The framework we built could be adapted to other genomic regions or even entirely different types of sequential data, and I'm excited about the possibilities for future applications.
 
 ## Other member
 Other members' reflections on the project
 
 # Generative AI Appendix
-claude sonet 
+claude sonnet 4.5 "help me organize my readme using markdown." 
