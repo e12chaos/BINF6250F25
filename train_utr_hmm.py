@@ -8,7 +8,7 @@ Authors: Nikaela Aitken & Tiange Feng
 """
 
 import numpy as np
-from baum_welch_hmm import HMM_Model, find_best_hmm, convert_hmm_params_to_matrices
+from project10.rmd import HMM_Model, find_best_hmm, convert_hmm_params_to_matrices
 from typing import List, Dict
 import sys
 
