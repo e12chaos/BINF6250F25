@@ -1,376 +1,496 @@
-# --- 1. Definition of Key Algorithm Variables ---
-#
-#   --- E-Step (Expectation) Variables ---
-#   alpha (table, T x N):
-#       - The log-forward probabilities.
-#       - alpha[t, i] = log(P(obs[1]...obs[t], state[t] = i))
-#
-#   beta (table, T x N):
-#       - The log-backward probabilities.
-#       - beta[t, i] = log(P(obs[t+1]...obs[T] | state[t] = i))
-#
-#   gamma (table, T x N):
-#       - The posterior (posterior) probabilities.
-#       - gamma[t, i] = P(state[t] = i | all_obs)
-#       - This is the "Expected State Count" for a single position.
-#
-#   log_xi_ij (scalar, calculated at each step t, i, j):
-#       - The joint log-posterior for a transition.
-#       - log(P(state[t]=i, state[t+1]=j | all_obs))
-#       - This is the "Expected Transition Count" for a single transition.
-#
-#   --- M-Step (Maximization) Variables ---
-#   e_init_counts (dict, size N):
-#       - Expected counts for starting in each state.
-#
-#   e_trans_numer (dict, size N x N):
-#       - Numerator. Expected counts of transitioning from state 'i' to state 'j'.
-#
-#   e_trans_denom (dict, size N):
-#       - Denominator. Expected counts of transitioning from state 'i' to *any* state.
-#
-#   e_emit_numer (dict, size N x M):
-#       - Numerator. Expected counts of emitting observation 'k' from state 'i'.
-#
-#   e_emit_denom (dict, size N):
-#       - Denominator. Expected counts of emitting *any* observation from state 'i'.
-#
-#   pseudocount (scalar):
-#       - A small value added to all 'e_' counts to prevent zero probabilities.
+---
+title: "Project 10: Baum-Welch Algorithm for Hidden Markov Models + Training HMMs on UTR sequences"
+author: "Nikaela Aitken & Tiange Feng"
+date: "`r format(Sys.time(), '%Y%m%d')`"
+output:
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 2
+---
+
+
+import numpy as np
+from typing import List, Tuple, Dict
 
 
 
+def convert_hmm_params_to_matrices(
+    states_list: List[str],
+    obs_map: Dict[str, int],
+    init_probs_dict: Dict[str, float],
+    trans_probs_dict: Dict[str, Dict[str, float]],
+    emit_probs_dict: Dict[str, Dict[str, float]]
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Convert HMM parameter dictionaries to numpy matrices.
 
-# --- 2. The HMM Model Class ---
-# An object-oriented structure to hold parameters and training logic.
+    Args:
+        states_list: An ordered list of state names (e.g., ['I', 'G']).
+        obs_map: A dictionary mapping observation names to their indices
+                 (e.g., {'A': 0, 'C': 1, ...}).
+        init_probs_dict: The dictionary of initial probabilities.
+        trans_probs_dict: The nested dictionary of transition probabilities.
+        emit_probs_dict: The nested dictionary of emission probabilities.
+
+    Returns:
+        A tuple of numpy arrays:
+        - initial_probs (1D array)
+        - transition_probs (2D array)
+        - emission_probs (2D array)
+    """
+    N = len(states_list)
+    M = len(obs_map)
+
+    # 1. Create Initial Probabilities array
+    initial_probs = np.zeros(N)
+    for i, state in enumerate(states_list):
+        initial_probs[i] = init_probs_dict.get(state, 0.0)
+
+    # 2. Create Transition Matrix
+    transition_probs = np.zeros((N, N))
+    for i, from_state in enumerate(states_list):
+        for j, to_state in enumerate(states_list):
+            if from_state in trans_probs_dict and to_state in trans_probs_dict[from_state]:
+                transition_probs[i, j] = trans_probs_dict[from_state][to_state]
+
+    # 3. Create Emission Matrix
+    emission_probs = np.zeros((N, M))
+    for i, state in enumerate(states_list):
+        for obs_name, j in obs_map.items():
+            if state in emit_probs_dict and obs_name in emit_probs_dict[state]:
+                emission_probs[i, j] = emit_probs_dict[state][obs_name]
+
+    return initial_probs, transition_probs, emission_probs
+
+
+def forward(obs_seq, states, initial_probs, transition_probs, emission_probs):
+    """
+    Forward algorithm - calculates alpha values.
+
+    Calculates the probability of observing the sequence up to time t
+    and being in each state at time t.
+
+    Args:
+        obs_seq (list): observation sequence as integer indices
+        states (list): all possible hidden state names
+        initial_probs (numpy array): 1D array of initial probabilities
+        transition_probs (numpy array): 2D NxN transition matrix
+        emission_probs (numpy array): 2D NxM emission matrix
+
+    Returns:
+        alpha (numpy array): forward probability matrix (T x N)
+        sequence_prob (float): total log-probability of observation sequence
+    """
+    T = len(obs_seq)
+    N = len(states)
+
+    # Convert to log space
+    with np.errstate(divide='ignore'):
+        log_initial = np.log(initial_probs)
+        log_transition = np.log(transition_probs)
+        log_emission = np.log(emission_probs)
+
+    # Create alpha matrix
+    alpha = np.zeros((T, N))
+
+    # Initialize first observation
+    first_obs = obs_seq[0]
+    alpha[0, :] = log_initial + log_emission[:, first_obs]
+
+    # Recursion
+    for t in range(1, T):
+        current_obs = obs_seq[t]
+
+        for j in range(N):
+            prob_from_prev_states = alpha[t-1, :] + log_transition[:, j]
+            sum_prob = np.logaddexp.reduce(prob_from_prev_states)
+            alpha[t, j] = sum_prob + log_emission[j, current_obs]
+
+    # Sum the final column to get total sequence probability
+    sequence_prob = np.logaddexp.reduce(alpha[T-1, :])
+
+    return alpha, sequence_prob
+
+
+def backward(obs_seq: List[int], states: List[str],
+             transition_probs: np.ndarray, emission_probs: np.ndarray) -> np.ndarray:
+    """
+    Backward algorithm - calculates beta values.
+
+    Calculates the probability of observing future observations
+    given the current state.
+
+    Args:
+        obs_seq: List of observation indices.
+        states: List of state names.
+        transition_probs: 2D array (NxN) of state transition probabilities.
+        emission_probs: 2D array (NxM) of observation emission probabilities.
+
+    Returns:
+        A 2D numpy matrix (T x N) containing the log-backward probabilities.
+    """
+    with np.errstate(divide='ignore'):
+        log_transition = np.log(transition_probs)
+        log_emission = np.log(emission_probs)
+
+    T = len(obs_seq)
+    N = len(states)
+
+    # Create beta table
+    log_beta_table = np.zeros((T, N))
+
+    # Initialize - log(1) = 0
+    log_beta_table[T - 1, :] = 0.0
+
+    # Recursion - go backwards
+    for t in range(T - 2, -1, -1):
+        obs_at_t_plus_1 = obs_seq[t + 1]
+
+        for i in range(N):
+            terms_for_sum = []
+            for j in range(N):
+                term = (log_transition[i, j] +
+                       log_emission[j, obs_at_t_plus_1] +
+                       log_beta_table[t + 1, j])
+                terms_for_sum.append(term)
+
+            # Numerically stable log-sum-exp
+            v = np.array(terms_for_sum)
+            log_beta_table[t, i] = np.logaddexp.reduce(v)
+
+    return log_beta_table
+
+
+def generate_normalized_random_vector(size):
+    """
+    Generate a vector of random numbers that sum to 1.0.
+
+    Args:
+        size (int): The number of elements in the vector.
+
+    Returns:
+        A numpy array of floats, length 'size', summing to 1.0.
+    """
+    vector = np.random.rand(size)
+
+    if np.sum(vector) == 0:
+        # Uniform probability if all zeros
+        vector = np.ones(size) / size
+    else:
+        # Normalize
+        vector = vector / np.sum(vector)
+
+    return vector
+
+
+def create_random_initial_params(states_list, obs_alphabet):
+    """
+    Create random initial HMM parameters.
+
+    All probability distributions sum to 1.
+
+    Args:
+        states_list (list): The list of state names.
+        obs_alphabet (list): The list of observation symbols.
+
+    Returns:
+        A tuple of dictionaries: (random_pi, random_A, random_B)
+    """
+    n_states = len(states_list)
+    n_obs = len(obs_alphabet)
+
+    # 1. Create random initial probabilities
+    random_pi = {}
+    init_values = generate_normalized_random_vector(n_states)
+    for i in range(n_states):
+        random_pi[states_list[i]] = init_values[i]
+
+    # 2. Create random transition probabilities
+    random_A = {}
+    for i in range(n_states):
+        from_state = states_list[i]
+        random_A[from_state] = {}
+        trans_values = generate_normalized_random_vector(n_states)
+
+        for j in range(n_states):
+            to_state = states_list[j]
+            random_A[from_state][to_state] = trans_values[j]
+
+    # 3. Create random emission probabilities
+    random_B = {}
+    for i in range(n_states):
+        from_state = states_list[i]
+        random_B[from_state] = {}
+        emit_values = generate_normalized_random_vector(n_obs)
+
+        for j in range(n_obs):
+            obs_symbol = obs_alphabet[j]
+            random_B[from_state][obs_symbol] = emit_values[j]
+
+    return random_pi, random_A, random_B
+
 
 class HMM_Model:
-    
-    # --- Initialization ---
-    function __init__(self, init_probs_dict, trans_probs_dict, emit_probs_dict, pseudocount=0.01):
-        # Stores the initial parameter guesses (dictionaries)
+    """
+    Hidden Markov Model with Baum-Welch training.
+    """
+
+    def __init__(self, init_probs_dict, trans_probs_dict, emit_probs_dict, pseudocount=0.01):
+        """
+        Initialize HMM model.
+
+        Args:
+            init_probs_dict: Dictionary of initial state probabilities
+            trans_probs_dict: Nested dictionary of transition probabilities
+            emit_probs_dict: Nested dictionary of emission probabilities
+            pseudocount: Small value for smoothing (default: 0.01)
+        """
         self.init_probs = init_probs_dict
         self.trans_probs = trans_probs_dict
         self.emit_probs = emit_probs_dict
-        
-        # Stores the small value for smoothing
         self.pseudocount = pseudocount
-        
-        # Infers the set of states from the initial probabilities
+
+        # Infer states and observations
         self.states = list(init_probs_dict.keys())
-        
-        # Infers the observation alphabet from the first state's emissions
         first_state = self.states[0]
         self.obs_alphabet = list(emit_probs_dict[first_state].keys())
-        
-        # Creates the observation-to-index map required by the algorithms
         self.obs_map = {symbol: i for i, symbol in enumerate(self.obs_alphabet)}
 
-    # --- Training Loop (Baum-Welch) ---
-    function baum_welch_train(self, training_obs_list, 
-                             max_iterations=100, 
-                             convergence_threshold=1e-5,
-                             check_frequency=10):
-        
-        # Stores the log-likelihood from the previous convergence check
-        previous_check_log_likelihood = -infinity
+    def baum_welch_train(self, training_obs_list, max_iterations=100,
+                        convergence_threshold=1e-5, check_frequency=10, verbose=True):
+        """
+        Train HMM using Baum-Welch algorithm (EM algorithm).
 
-        for iter from 0 to max_iterations:
-            
-            # --- 2. Expectation Step (e-step) ---
-            
-            # Accumulates expected counts from all sequences for this iteration.
-            # Initializes with a pseudocount to prevent zero probabilities.
+        Args:
+            training_obs_list: List of observation sequences (strings)
+            max_iterations: Maximum number of iterations
+            convergence_threshold: Stop when log-likelihood change is below this
+            check_frequency: Check convergence every N iterations
+            verbose: Print progress information
+
+        Returns:
+            Tuple of (init_probs, trans_probs, emit_probs, final_log_likelihood)
+        """
+        previous_check_log_likelihood = float('-inf')
+
+        for iteration in range(max_iterations):
+
+            # --- E-Step: Expectation ---
+            # Initialize expected counts with pseudocount
             e_init_counts = {state: self.pseudocount for state in self.states}
-            
-            e_trans_numer = {s_i: {s_j: self.pseudocount for s_j in self.states} for s_i in self.states}
-            e_trans_denom = {s_i: (self.pseudocount * len(self.states)) for s_i in self.states}
-            
-            e_emit_numer = {s_i: {obs: self.pseudocount for obs in self.obs_alphabet} for s_i in self.states}
-            e_emit_denom = {s_i: (self.pseudocount * len(self.obs_alphabet)) for s_i in self.states}
-            
-            # Stores the total log-likelihood for this current iteration
-            current_iter_log_likelihood = 0
 
-            # Converts current parameter dictionaries to matrices once per iteration
-            init_matrix, trans_matrix, emit_matrix = call convert_hmm_params_to_matrices(
-                self.states, self.obs_map, self.init_probs, self.trans_probs, self.emit_probs
+            e_trans_numer = {s_i: {s_j: self.pseudocount for s_j in self.states}
+                           for s_i in self.states}
+            e_trans_denom = {s_i: (self.pseudocount * len(self.states))
+                           for s_i in self.states}
+
+            e_emit_numer = {s_i: {obs: self.pseudocount for obs in self.obs_alphabet}
+                          for s_i in self.states}
+            e_emit_denom = {s_i: (self.pseudocount * len(self.obs_alphabet))
+                          for s_i in self.states}
+
+            current_iter_log_likelihood = 0.0
+
+            # Convert parameters to matrices
+            init_matrix, trans_matrix, emit_matrix = convert_hmm_params_to_matrices(
+                self.states, self.obs_map, self.init_probs,
+                self.trans_probs, self.emit_probs
             )
-            
-            # Converts matrices to log-space for stable calculation
+
+            # Convert to log space
             with np.errstate(divide='ignore'):
                 log_init = np.log(init_matrix)
                 log_trans = np.log(trans_matrix)
                 log_emit = np.log(emit_matrix)
 
-            # Iterates through each observation sequence
+            # Process each sequence
             for seq_str in training_obs_list:
-                
                 obs_seq = [self.obs_map[obs] for obs in seq_str]
                 T = len(obs_seq)
 
-                # Runs forward-backward using the *current* model parameters
-                # This calculates the posterior probabilities needed for the e-step
-                
-                # Calls the 'forward' function (your version)
-                alpha_table, seq_log_prob = call forward(
+                # Run forward-backward
+                alpha_table, seq_log_prob = forward(
                     obs_seq, self.states, init_matrix, trans_matrix, emit_matrix
                 )
-                
-                # Calls the 'backward' function
-                beta_table = call backward(
+
+                beta_table = backward(
                     obs_seq, self.states, trans_matrix, emit_matrix
                 )
 
-                # --- Combine to get Gamma and Xi ---
-                # gamma = P(state[t]=i | all_obs)
+                # Calculate gamma = P(state[t]=i | all_obs)
                 log_gamma_unnormalized = alpha_table + beta_table
                 log_posterior_gamma = log_gamma_unnormalized - seq_log_prob
-                gamma = np.exp(log_posterior_gamma) # Convert to normal probability space
-                
+                gamma = np.exp(log_posterior_gamma)
+
                 current_iter_log_likelihood += seq_log_prob
-                
-                # --- Accumulate Expected Counts ---
-                
-                # 1. Accumulates expected initial state counts (from gamma[0])
+
+                # Accumulate expected counts
+
+                # 1. Initial state counts
                 for i, state_i in enumerate(self.states):
                     e_init_counts[state_i] += gamma[0, i]
 
-                # 2. Accumulates expected transition counts (from Xi)
-                for t from 0 to T-2: # Loop up to the second-to-last time step
-                    obs_t_plus_1 = obs_seq[t+1]
-                    
+                # 2. Transition counts
+                for t in range(T - 1):
+                    obs_t_plus_1 = obs_seq[t + 1]
+
                     for i, state_i in enumerate(self.states):
-                        e_trans_denom[state_i] += gamma[t, i] # Denominator for A[i,j]
-                        
+                        e_trans_denom[state_i] += gamma[t, i]
+
                         for j, state_j in enumerate(self.states):
-                            # Calculates log(xi[t, i, j]) using pre-computed values
-                            # log_xi = log(alpha[t,i] * A[i,j] * B[j, obs[t+1]] * beta[t+1, j] / P(O))
-                            log_xi_ij = (alpha_table[t, i] + 
-                                         log_trans[i, j] + 
-                                         log_emit[j, obs_t_plus_1] + 
-                                         beta_table[t + 1, j] - 
-                                         seq_log_prob)
-                            
-                            # Adds the probability (not log-prob) to the numerator
+                            # Calculate xi[t, i, j]
+                            log_xi_ij = (alpha_table[t, i] +
+                                       log_trans[i, j] +
+                                       log_emit[j, obs_t_plus_1] +
+                                       beta_table[t + 1, j] -
+                                       seq_log_prob)
+
                             e_trans_numer[state_i][state_j] += np.exp(log_xi_ij)
-                
-                # 3. Accumulates expected emission counts (from Gamma)
-                for t from 0 to T-1: # Loop over all time steps
+
+                # 3. Emission counts
+                for t in range(T):
                     current_obs_symbol = seq_str[t]
                     for i, state_i in enumerate(self.states):
-                        e_emit_denom[state_i] += gamma[t, i] # Denominator for B[i,k]
+                        e_emit_denom[state_i] += gamma[t, i]
                         e_emit_numer[state_i][current_obs_symbol] += gamma[t, i]
 
-            # --- 3. Maximization Step (m-step) ---
-            # Re-estimates model parameters by normalizing the expected counts
-            
-            # 1. Updates initial probabilities
+            # --- M-Step: Maximization ---
+            # Re-estimate parameters
+
+            # 1. Update initial probabilities
             total_init = sum(e_init_counts.values())
             for state_i in self.states:
                 self.init_probs[state_i] = e_init_counts[state_i] / total_init
 
-            # 2. Updates transition probabilities
+            # 2. Update transition probabilities
             for state_i in self.states:
                 for state_j in self.states:
-                    self.trans_probs[state_i][state_j] = e_trans_numer[state_i][state_j] / e_trans_denom[state_i]
-            
-            # 3. Updates emission probabilities
+                    self.trans_probs[state_i][state_j] = (
+                        e_trans_numer[state_i][state_j] / e_trans_denom[state_i]
+                    )
+
+            # 3. Update emission probabilities
             for state_i in self.states:
                 for obs in self.obs_alphabet:
-                    self.emit_probs[state_i][obs] = e_emit_numer[state_i][obs] / e_emit_denom[state_i]
+                    self.emit_probs[state_i][obs] = (
+                        e_emit_numer[state_i][obs] / e_emit_denom[state_i]
+                    )
 
-            # --- 4. Checks for Convergence (Efficiently) ---
-            # Checks convergence only at specified intervals to save computation
-            if iter > 0 and (iter % check_frequency == 0):
-                
+            # Check for convergence
+            if iteration > 0 and (iteration % check_frequency == 0):
                 likelihood_change = abs(current_iter_log_likelihood - previous_check_log_likelihood)
-                
+
+                if verbose:
+                    print(f"Iteration {iteration}: Log-Likelihood = {current_iter_log_likelihood:.4f}, "
+                          f"Change = {likelihood_change:.6f}")
+
                 if likelihood_change < convergence_threshold:
-                    print "Convergence reached at iteration {iter}."
-                    break loop # Terminate the loop early
-                
-                # Updates the likelihood for the next check
+                    if verbose:
+                        print(f"Convergence reached at iteration {iteration}.")
+                    break
+
                 previous_check_log_likelihood = current_iter_log_likelihood
-        
-        # Loop finishes
+
         return self.init_probs, self.trans_probs, self.emit_probs, current_iter_log_likelihood
 
 
-# --- 3. Meta-Algorithm for Finding Global Optimum ---
-# This function addresses the local optima problem by using multiple random restarts.
+def find_best_hmm(training_obs_list, states_list, obs_alphabet,
+                 num_restarts=10, max_iterations_per_run=50,
+                 pseudocount=0.01, verbose=True):
+    """
+    Find best HMM parameters using multiple random restarts.
 
-function find_best_hmm(training_obs_list, num_restarts=10, max_iterations_per_run=50, pseudocount=0.01):
-    
-    best_overall_model_params = null
-    best_overall_log_likelihood = -infinity
+    This addresses the local optima problem by trying multiple
+    random initializations.
 
-    print "Starting {num_restarts} random restarts to find global optimum..."
+    Args:
+        training_obs_list: List of observation sequences
+        states_list: List of state names
+        obs_alphabet: List of observation symbols
+        num_restarts: Number of random restarts
+        max_iterations_per_run: Max iterations for each run
+        pseudocount: Smoothing parameter
+        verbose: Print progress
 
-    for i from 1 to num_restarts:
-        print "--- Restart {i} ---"
-        
-        # 1. Randomizes initial parameters for this run
-        init_guesses, trans_guesses, emit_guesses = call create_random_initial_params()
-        
-        # 2. Creates a new model instance with these random guesses
-        temp_model = HMM_Model(init_guesses, trans_guesses, emit_guesses, pseudocount)
-        
-        # 3. Runs the baum_welch algorithm to find *one* local optimum
-        (local_pi, local_A, local_B, local_log_likelihood) = temp_model.baum_welch_train(
-            training_obs_list, 
-            max_iterations=max_iterations_per_run
+    Returns:
+        Tuple of (best_params, best_log_likelihood)
+    """
+    best_overall_model_params = None
+    best_overall_log_likelihood = float('-inf')
+
+    if verbose:
+        print(f"Starting {num_restarts} random restarts to find global optimum...")
+
+    for i in range(num_restarts):
+        if verbose:
+            print(f"\n--- Restart {i+1}/{num_restarts} ---")
+
+        # 1. Random initial parameters
+        init_guesses, trans_guesses, emit_guesses = create_random_initial_params(
+            states_list, obs_alphabet
         )
-        
-        print "Restart {i} finished with Log-Likelihood: {local_log_likelihood}"
 
-        # 4. Compares and stores the best log-likelihood found so far
+        # 2. Create new model
+        temp_model = HMM_Model(init_guesses, trans_guesses, emit_guesses, pseudocount)
+
+        # 3. Train to find local optimum
+        local_pi, local_A, local_B, local_log_likelihood = temp_model.baum_welch_train(
+            training_obs_list,
+            max_iterations=max_iterations_per_run,
+            verbose=verbose
+        )
+
+        if verbose:
+            print(f"Restart {i+1} finished with Log-Likelihood: {local_log_likelihood:.4f}")
+
+        # 4. Keep best result
         if local_log_likelihood > best_overall_log_likelihood:
             best_overall_log_likelihood = local_log_likelihood
             best_overall_model_params = (local_pi, local_A, local_B)
-            
-    # After all restarts, returns the parameters from the best-scoring run
+
     return best_overall_model_params, best_overall_log_likelihood
 
 
+if __name__ == "__main__":
+    # Example usage with DNA sequences
 
+    states = ['I', 'G']  # Intergenic, Genic
+    obs_map = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
 
+    # Example training sequences
+    training_sequences = [
+        "GGCACTGAA",
+        "ATCGATCG",
+        "GGGGGAAA"
+    ]
 
-    function create_random_initial_params(states_list, obs_alphabet):
-'''
-    This helper function must be implemented
-    Logic: Creates random init, trans, and emit dictionaries.
-    Must ensure all probability rows sum to 1.
-    
-    Args:
-    states_list (list): The list of state names.
-    obs_alphabet (list): The list of observation symbols.
+    # Run with random restarts
+    print("=== Training HMM with Baum-Welch ===\n")
 
-Returns:
-    A tuple of dictionaries: (random_pi, random_A, random_B)
-'''
+    best_params, best_likelihood = find_best_hmm(
+        training_sequences,
+        states_list=states,
+        obs_alphabet=list(obs_map.keys()),
+        num_restarts=5,
+        max_iterations_per_run=50,
+        verbose=True
+    )
 
-n_states = len(states_list)
-n_obs = len(obs_alphabet)
+    print("\n=== Final Best Model ===")
+    print(f"Best Log-Likelihood: {best_likelihood:.4f}")
+    print("\nInitial Probabilities:")
+    for state, prob in best_params[0].items():
+        print(f"  {state}: {prob:.4f}")
 
-# --- 1. Create random initial probabilities ---
-random_pi = {}
-# Generates a random vector of size N that sums to 1
-init_values = call generate_normalized_random_vector(n_states)
-for i from 0 to n_states-1:
-    random_pi[states_list[i]] = init_values[i]
+    print("\nTransition Probabilities:")
+    for from_state, transitions in best_params[1].items():
+        print(f"  From {from_state}:")
+        for to_state, prob in transitions.items():
+            print(f"    to {to_state}: {prob:.4f}")
 
-# --- 2. Create random transition probabilities ---
-random_A = {}
-for i from 0 to n_states-1:
-    from_state = states_list[i]
-    random_A[from_state] = {}
-    
-    # Generates a new random vector for *each* 'from_state' row
-    trans_values = call generate_normalized_random_vector(n_states)
-    
-    for j from 0 to n_states-1:
-        to_state = states_list[j]
-        random_A[from_state][to_state] = trans_values[j]
-
-# --- 3. Create random emission probabilities ---
-random_B = {}
-for i from 0 to n_states-1:
-    from_state = states_list[i]
-    random_B[from_state] = {}
-    
-    # Generates a new random vector (of size M) for *each* 'from_state' row
-    emit_values = call generate_normalized_random_vector(n_obs)
-    
-    for j from 0 to n_obs-1:
-        obs_symbol = obs_alphabet[j]
-        random_B[from_state][obs_symbol] = emit_values[j]
-
-return random_pi, random_A, random_B
-
-
-
-function create_random_initial_params(states_list, obs_alphabet):
-'''
-    This helper function must be implemented
-    Logic: Creates random init, trans, and emit dictionaries.
-    Must ensure all probability rows sum to 1.
-    
-    Args:
-    states_list (list): The list of state names.
-    obs_alphabet (list): The list of observation symbols.
-
-Returns:
-    A tuple of dictionaries: (random_pi, random_A, random_B)
-'''
-
-n_states = len(states_list)
-n_obs = len(obs_alphabet)
-
-# --- 1. Create random initial probabilities ---
-random_pi = {}
-# Generates a random vector of size N that sums to 1
-init_values = call generate_normalized_random_vector(n_states)
-for i from 0 to n_states-1:
-    random_pi[states_list[i]] = init_values[i]
-
-# --- 2. Create random transition probabilities ---
-random_A = {}
-for i from 0 to n_states-1:
-    from_state = states_list[i]
-    random_A[from_state] = {}
-    
-    # Generates a new random vector for *each* 'from_state' row
-    trans_values = call generate_normalized_random_vector(n_states)
-    
-    for j from 0 to n_states-1:
-        to_state = states_list[j]
-        random_A[from_state][to_state] = trans_values[j]
-
-# --- 3. Create random emission probabilities ---
-random_B = {}
-for i from 0 to n_states-1:
-    from_state = states_list[i]
-    random_B[from_state] = {}
-    
-    # Generates a new random vector (of size M) for *each* 'from_state' row
-    emit_values = call generate_normalized_random_vector(n_obs)
-    
-    for j from 0 to n_obs-1:
-        obs_symbol = obs_alphabet[j]
-        random_B[from_state][obs_symbol] = emit_values[j]
-
-return random_pi, random_A, random_B
-
-function generate_normalized_random_vector(size):
-'''
-Generates a vector of random numbers that sum to 1.0.
-Args:
-    size (int): The number of elements in the vector.
-
-Returns:
-    A list or array of floats, length 'size', summing to 1.0.
-'''
-
-vector = create_empty_array(size)
-total_sum = 0
-
-# 1. Generate 'size' random floats
-for i from 0 to size-1:
-    # Generates a random float, e.g., between 0.0 and 1.0
-    val = random_float(0.0, 1.0)
-    vector[i] = val
-    total_sum = total_sum + val
-
-# 2. Handle the (very unlikely) edge case where all random numbers are 0
-if total_sum == 0:
-    # Assign a uniform probability to all elements
-    for i from 0 to size-1:
-        vector[i] = 1.0 / size
-else:
-    # 3. Normalize the vector
-    # Divides each element by the total sum
-    for i from 0 to size-1:
-        vector[i] = vector[i] / total_sum
-        
-return vector
+    print("\nEmission Probabilities:")
+    for state, emissions in best_params[2].items():
+        print(f"  State {state}:")
+        for obs, prob in emissions.items():
+            print(f"    {obs}: {prob:.4f}")
