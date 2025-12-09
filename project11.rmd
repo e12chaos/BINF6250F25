@@ -103,7 +103,7 @@ class HMM:
 
         # Define Allowed Transitions (Topology)
         # From Mk, Ik, Dk -> M(k+1), I(k), D(k+1)
-        # Note: Handling boundary conditions (Start M0 and End M_Last)
+        # Note: boundary conditions (Start M0 and End M_Last)
 
         # Helper to safely init a transition if valid
         def add_edge(u, v):
@@ -237,83 +237,28 @@ class HMM:
         """
         obs_len = len(observation)
         states = self.hidden_states
-        
-        # Log-space conversion helpers
-        # Use a very small number for log(0)
-        LOG_ZERO = -1e20 
 
-        def get_log_trans(u, v):
-            p = self.trans_probs.get(u, {}).get(v, 0)
-            return np.log(p) if p > 0 else LOG_ZERO
+        # Viterbi DP table (Log space to prevent underflow)
+        v_table = [{}]
+        path = {}
 
-        def get_log_emit(s, char):
-            if s not in self.emit_probs: return LOG_ZERO # Silent state
-            p = self.emit_probs.get(s, {}).get(char, 0)
-            return np.log(p) if p > 0 else LOG_ZERO
-
-        # DP Table: v_table[t][state] = log_prob
-        # Initialize with -infinity
-        v_table = [{s: LOG_ZERO for s in states} for _ in range(obs_len)]
-        path = [{s: [] for s in states} for _ in range(obs_len)]
-
-        # --- INITIALIZATION (t=0) ---
-        # We start at M0 (virtual t=-1). We need to calculate prob of reaching
-        # first emitting states (M1, I0...) generating observation[0]
-        
-        # 1. Update Emitters (M/I) from M0
-        # M0 -> M1, M0 -> I0
+        # Initialization (t=0)
         for s in states:
-            if s == "M0" or s.startswith("D"): continue # Skip silent for moment
-            
-            # Transition M0 -> s
-            log_t = get_log_trans("M0", s)
-            log_e = get_log_emit(s, observation[0])
-            
-            if log_t > LOG_ZERO and log_e > LOG_ZERO:
-                v_table[0][s] = log_t + log_e
-                path[0][s] = ["M0", s]
+            p_init = np.log(self.init_probs.get(s, 0) + 1e-300)
 
-        # 2. Update Silent Deletions (D) at t=0
-        # D states can be reached from M0 or other D states without consuming input
-        # Standard Profile HMM: M0 -> D1 -> D2...
-        # We iterate through Delete states in topological order (D1, D2...)
-        for d_state in self.delete_states: # Sorted D1, D2...
-            # Predecessors for D_k are M_{k-1} or D_{k-1}
-            # At t=0, predecessor must be M0 (since M_k/I_k consume input)
-            # Actually, M0 -> D1 is valid. D1 -> D2 is valid.
-            
-            best_score = LOG_ZERO
-            best_prev = None
-            
-            # Check M0 -> D_k
-            # (Only valid for D1 usually, but let's check generic transitions)
-            log_t = get_log_trans("M0", d_state)
-            if log_t > LOG_ZERO:
-                score = 0.0 + log_t # M0 prob is 1.0 (log 0)
-                if score > best_score:
-                    best_score = score
-                    best_prev = "M0"
-            
-            # Check D_{k-1} -> D_k
-            for prev_d in self.delete_states:
-                if prev_d == d_state: continue
-                # Access prev_d score at current t=0 (it was just computed in this loop!)
-                prev_score = v_table[0][prev_d]
-                log_t = get_log_trans(prev_d, d_state)
-                if prev_score > LOG_ZERO and log_t > LOG_ZERO:
-                    score = prev_score + log_t
-                    if score > best_score:
-                        best_score = score
-                        best_prev = prev_d
-            
-            v_table[0][d_state] = best_score
-            if best_prev:
-                # Path to D state at t=0 is just the transition chain
-                # If prev is M0, path is [M0, D1]
-                if best_prev == "M0":
-                    path[0][d_state] = ["M0", d_state]
-                else:
-                    path[0][d_state] = path[0][best_prev] + [d_state]
+            # Check emission
+            if s in self.emit_probs and observation[0] in self.emit_probs[s]:
+                p_emit = np.log(self.emit_probs[s][observation[0]] + 1e-300)
+                v_table[0][s] = p_init + p_emit
+                path[s] = [s]
+            else:
+                v_table[0][s] = -np.inf
+                path[s] = [s]
+
+        # Recursion
+        for t in range(1, obs_len):
+            v_table.append({})
+            newpath = {}
 
         # --- RECURSION (t=1 to T-1) ---
         for t in range(1, obs_len):
