@@ -42,6 +42,23 @@ class HMM:
     # ### NEW CODE SECTION: Profile HMM Construction ###
     # -------------------------------------------------------------------------
 
+
+
+    @staticmethod
+    def _compute_background_dist(sequences, alphabet, pseudocount):
+        """Compute global amino acid frequencies for insertion states."""
+    #Initialize the  counts with pseudocount to avoid zero probabilities
+        counts = {char: pseudocount for char in alphabet}
+        total = pseudocount * len(alphabet)
+    #Count occurrences of each amino acid across all sequences. We include residues from both match and insert columns since this     represents the general background compositon   
+        for seq in sequences:
+            for char in seq:
+                if char != '-' and char in counts:
+                    counts[char] += 1
+                    total += 1
+        
+        return {char: counts[char] / total for char in alphabet}
+
     @classmethod
     def from_msa(cls, fasta_file, alphabet="ACDEFGHIKLMNPQRSTVWY", pseudocount=0.1):
         """
