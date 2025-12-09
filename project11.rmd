@@ -228,15 +228,12 @@ class HMM:
             "emit_probs": self.emit_probs
         })
 
+
     def viterbi(self, observation):
         """
-        Viterbi Algorithm to find the most likely path of hidden states.
-
-        Args:
-            observation (str): Input sequence (e.g., "VGQDH").
-
-        Returns:
-            tuple: (best_prob, best_path_list)
+        Modified Viterbi algorithm that handles:
+        1. Silent Start State (M0)
+        2. Silent Deletion States (Dk) - allows non-emitting transitions
         """
         obs_len = len(observation)
         states = self.hidden_states
@@ -263,27 +260,80 @@ class HMM:
             v_table.append({})
             newpath = {}
 
+        # --- RECURSION (t=1 to T-1) ---
+        for t in range(1, obs_len):
+            current_obs = observation[t]
+            
+            # 1. Update Emitters (M, I)
+            # They consume observation t, so they come from ANY state at t-1
             for curr_s in states:
-                # Only process emitting states for 'observation[t]'
-                if curr_s not in self.emit_probs or observation[t] not in self.emit_probs[curr_s]:
-                    v_table[t][curr_s] = -np.inf
-                    continue
+                # Skip silent states (M0, D, End)
+                if curr_s not in self.emit_probs: continue
+                
+                log_e = get_log_emit(curr_s, current_obs)
+                if log_e <= LOG_ZERO: continue
 
-                (prob, prev_state) = max(
-                    (v_table[t-1][prev_s] + np.log(self.trans_probs[prev_s].get(curr_s, 0) + 1e-300), prev_s)
-                    for prev_s in states
-                )
+                best_score = LOG_ZERO
+                best_prev = None
+                
+                # Check all possible previous states at t-1
+                for prev_s in states:
+                    prev_score = v_table[t-1][prev_s]
+                    log_t = get_log_trans(prev_s, curr_s)
+                    
+                    if prev_score > LOG_ZERO and log_t > LOG_ZERO:
+                        score = prev_score + log_t + log_e
+                        if score > best_score:
+                            best_score = score
+                            best_prev = prev_s
+                
+                v_table[t][curr_s] = best_score
+                if best_prev:
+                    path[t][curr_s] = path[t-1][best_prev] + [curr_s]
 
-                emit_p = np.log(self.emit_probs[curr_s][observation[t]] + 1e-300)
-                v_table[t][curr_s] = prob + emit_p
-                newpath[curr_s] = path[prev_state] + [curr_s]
+            # 2. Update Silent Deletions (D)
+            # They do NOT consume observation. They come from M or D at CURRENT time t.
+            # They act as "instant" transitions after the emission at t.
+            for curr_d in self.delete_states: # Ordered D1, D2...
+                best_score = LOG_ZERO
+                best_prev = None
+                
+                # Predecessors can be M_{k-1} or D_{k-1} at CURRENT t
+                # We check all states at current t
+                for prev_s in states:
+                    # D cannot follow I usually, but we check all allowed transitions
+                    prev_score = v_table[t][prev_s] # Current t
+                    log_t = get_log_trans(prev_s, curr_d)
+                    
+                    if prev_score > LOG_ZERO and log_t > LOG_ZERO:
+                        score = prev_score + log_t
+                        if score > best_score:
+                            best_score = score
+                            best_prev = prev_s
+                
+                v_table[t][curr_d] = best_score
+                if best_prev:
+                    path[t][curr_d] = path[t][best_prev] + [curr_d]
 
-            path = newpath
+        # --- TERMINATION ---
+        # Find best score at T-1 among all states (or specifically End state)
+        # Usually we look for transition to "End" (M_Last)
+        
+        # Simplified: Just max score of emitting states at T-1
+        best_score = LOG_ZERO
+        best_state = None
+        
+        for s in states:
+            score = v_table[obs_len-1][s]
+            if score > best_score:
+                best_score = score
+                best_state = s
+        
+        if best_state is None:
+            return -np.inf, []
+            
+        return best_score, path[obs_len-1][best_state]
 
-        # Termination
-        (best_prob, last_state) = max((v_table[obs_len-1][s], s) for s in states)
-
-        return best_prob, path[last_state]
 
 # -------------------------------------------------------------------------
 # ### NEW MAIN BLOCK FOR TESTING ###
