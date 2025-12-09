@@ -152,57 +152,65 @@ class HMM:
                 add_edge(current_D, next_I)
                 if next_D: add_edge(current_D, next_D)
 
-        # Initialize Emission Dictionary
-        emit_counts = {s: {} for s in all_states}
-        alpha_list = list(alphabet)
+# Initialize Emission Dictionary
+emit_counts = {s: {} for s in all_states}
+alpha_list = list(alphabet)
 
-        for s in all_states:
-            # Silent states (M0, End, Deletes) do not emit
-            if s == "M0" or s == f"M{L+1}" or s.startswith("D"):
-                continue
+# Compute background distribution for ALL insertion states
+background_dist = HMM._compute_background_dist(sequences, alphabet, pseudocount)
 
-            # Match and Insert states emit
-            for char in alpha_list:
-                emit_counts[s][char] = pseudocount
+for s in all_states:
+    # Silent states (M0, End, Deletes) do not emit
+    if s == "M0" or s == f"M{L+1}" or s.startswith("D"):
+        continue
+
+    # Insertion states use shared background distribution
+    if s.startswith("I"):
+        emit_counts[s] = background_dist.copy()
+    else:
+        # Match states get position-specific distributions
+        for char in alpha_list:
+            emit_counts[s][char] = pseudocount
 
         # 5. Count Transitions and Emissions from Data
-        for seq in sequences:
-            curr_state = "M0"
-            match_idx_counter = 0 # Tracks which Match Node (1..L) we are currently at/past
+for seq in sequences:
+    curr_state = "M0"
+    match_idx = 0  # Which match node we've PASSED (0 initially, before M1)
 
-            for col_idx, char in enumerate(seq):
-                is_match_col = col_idx in match_cols
+    for col_idx, char in enumerate(seq):
+        is_match_col = col_idx in match_cols
 
-                if is_match_col:
-                    match_idx_counter += 1
-                    target_node_idx = match_idx_counter
+        if is_match_col:
+            # Entering a new match column block
+            match_idx += 1
+            
+            if char != '-':
+                # Match State
+                next_state = f"M{match_idx}"
+                trans_counts[curr_state][next_state] += 1
+                emit_counts[next_state][char] += 1
+                curr_state = next_state
+            else:
+                # Delete State (gap in match column)
+                next_state = f"D{match_idx}"
+                trans_counts[curr_state][next_state] += 1
+                curr_state = next_state
 
-                    if char != '-':
-                        # Match State
-                        next_state = f"M{target_node_idx}"
-                        trans_counts[curr_state][next_state] += 1
-                        emit_counts[next_state][char] += 1
-                        curr_state = next_state
-                    else:
-                        # Delete State
-                        next_state = f"D{target_node_idx}"
-                        trans_counts[curr_state][next_state] += 1
-                        curr_state = next_state
+        else:
+            # Insert column - emissions go to I{match_idx}
+            # match_idx tells us which match node we're "after"
+            if char != '-':
+                next_state = f"I{match_idx}"
+                trans_counts[curr_state][next_state] += 1
+                # Don't count emissions for background dist
+                # (already computed globally)
+                curr_state = next_state
+            # If char is '-', ignore (gap in insert column)
 
-                else:
-                    # Insert Column
-                    if char != '-':
-                        # Insert State (belongs to previous node index)
-                        next_state = f"I{match_idx_counter}"
-                        trans_counts[curr_state][next_state] += 1
-                        emit_counts[next_state][char] += 1
-                        curr_state = next_state
-                    # If char is '-', we do nothing (ignore gap in insert col)
-
-            # End of sequence -> Transition to End State
-            end_state = f"M{L+1}"
-            if end_state in trans_counts[curr_state]:
-                trans_counts[curr_state][end_state] += 1
+    # End of sequence -> Transition to End State
+    end_state = f"M{L+1}"
+    if end_state in trans_counts[curr_state]:
+        trans_counts[curr_state][end_state] += 1
 
         # 6. Normalize Counts to Probabilities
 
@@ -220,19 +228,20 @@ class HMM:
                     final_trans[src][dest] = count / total
 
         # Normalize Emissions
-        final_emit = {}
-        for state, emissions in emit_counts.items():
-            final_emit[state] = {}
-            if not emissions: continue # Skip silent states
+final_emit = {}
+for state, emissions in emit_counts.items():
+    final_emit[state] = {}
+    if not emissions: continue # Skip silent states
 
-            total = sum(emissions.values())
-            if total > 0:
-                for char, count in emissions.items():
-                    final_emit[state][char] = count / total
-
-        print(f"Profile HMM created with Length L={L}")
-        return cls(final_init, final_trans, final_emit)
-
+    # Insertion states already have normalized background distribution
+    if state.startswith("I"):
+        final_emit[state] = emissions  # Already normalized
+    else:
+        # Normalize Match states
+        total = sum(emissions.values())
+        if total > 0:
+            for char, count in emissions.items():
+                final_emit[state][char] = count / total
     # -------------------------------------------------------------------------
     # ### END NEW CODE SECTION ###
     # -------------------------------------------------------------------------
@@ -247,109 +256,142 @@ class HMM:
 
 
     def viterbi(self, observation):
-        """
-        Modified Viterbi algorithm that handles:
-        1. Silent Start State (M0)
-        2. Silent Deletion States (Dk) - allows non-emitting transitions
-        """
-        obs_len = len(observation)
-        states = self.hidden_states
-
-        # Viterbi DP table (Log space to prevent underflow)
-        v_table = [{}]
-        path = {}
-
-        # Initialization (t=0)
-        for s in states:
-            p_init = np.log(self.init_probs.get(s, 0) + 1e-300)
-
-            # Check emission
-            if s in self.emit_probs and observation[0] in self.emit_probs[s]:
-                p_emit = np.log(self.emit_probs[s][observation[0]] + 1e-300)
-                v_table[0][s] = p_init + p_emit
-                path[s] = [s]
-            else:
-                v_table[0][s] = -np.inf
-                path[s] = [s]
-
-        # Recursion
-        for t in range(1, obs_len):
-            v_table.append({})
-            newpath = {}
-
-        # --- RECURSION (t=1 to T-1) ---
-        for t in range(1, obs_len):
-            current_obs = observation[t]
+    """
+    Viterbi Algorithm adapted for Profile HMMs with silent states.
+    
+    Args:
+        observation (str): Input sequence (e.g., "VGQDH").
+    
+    Returns:
+        tuple: (best_prob, best_path_list)
+    """
+    obs_len = len(observation)
+    
+    # Identify state types
+    match_states = [s for s in self.hidden_states if s.startswith("M")]
+    insert_states = [s for s in self.hidden_states if s.startswith("I")]
+    delete_states = [s for s in self.hidden_states if s.startswith("D")]
+    
+    # DP tables
+    v = [{} for _ in range(obs_len + 1)]
+    backptr = [{} for _ in range(obs_len + 1)]
+    
+    # Initialize at t=0 (before any emissions)
+    v[0]["M0"] = 0.0  # log(1.0) = 0
+    backptr[0]["M0"] = None
+    
+    # Propagate silent states at t=0 (only D1 is reachable from M0)
+    for state in delete_states:
+        v[0][state] = -np.inf
+        backptr[0][state] = None
+    
+    # Check if we can reach D1 from M0 at t=0
+    if "D1" in self.trans_probs.get("M0", {}):
+        v[0]["D1"] = v[0]["M0"] + np.log(self.trans_probs["M0"]["D1"] + 1e-300)
+        backptr[0]["D1"] = "M0"
+        
+        # Propagate through deletion chain at t=0
+        for state in sorted(delete_states):
+            if v[0][state] > -np.inf:
+                for next_state in self.trans_probs.get(state, {}):
+                    if next_state in delete_states:
+                        new_prob = v[0][state] + np.log(self.trans_probs[state][next_state] + 1e-300)
+                        if new_prob > v[0].get(next_state, -np.inf):
+                            v[0][next_state] = new_prob
+                            backptr[0][next_state] = state
+    
+    # Main recursion
+    for t in range(1, obs_len + 1):
+        obs_char = observation[t-1]
+        
+        # Initialize all states at time t
+        for state in self.hidden_states:
+            v[t][state] = -np.inf
+            backptr[t][state] = None
+        
+        # Process emitting states (Match and Insert)
+        for state in match_states + insert_states:
+            # Skip Begin and End
+            if state == "M0" or state == f"M{len(match_states)-1}":
+                continue
             
-            # 1. Update Emitters (M, I)
-            # They consume observation t, so they come from ANY state at t-1
-            for curr_s in states:
-                # Skip silent states (M0, D, End)
-                if curr_s not in self.emit_probs: continue
-                
-                log_e = get_log_emit(curr_s, current_obs)
-                if log_e <= LOG_ZERO: continue
-
-                best_score = LOG_ZERO
-                best_prev = None
-                
-                # Check all possible previous states at t-1
-                for prev_s in states:
-                    prev_score = v_table[t-1][prev_s]
-                    log_t = get_log_trans(prev_s, curr_s)
-                    
-                    if prev_score > LOG_ZERO and log_t > LOG_ZERO:
-                        score = prev_score + log_t + log_e
-                        if score > best_score:
-                            best_score = score
-                            best_prev = prev_s
-                
-                v_table[t][curr_s] = best_score
-                if best_prev:
-                    path[t][curr_s] = path[t-1][best_prev] + [curr_s]
-
-            # 2. Update Silent Deletions (D)
-            # They do NOT consume observation. They come from M or D at CURRENT time t.
-            # They act as "instant" transitions after the emission at t.
-            for curr_d in self.delete_states: # Ordered D1, D2...
-                best_score = LOG_ZERO
-                best_prev = None
-                
-                # Predecessors can be M_{k-1} or D_{k-1} at CURRENT t
-                # We check all states at current t
-                for prev_s in states:
-                    # D cannot follow I usually, but we check all allowed transitions
-                    prev_score = v_table[t][prev_s] # Current t
-                    log_t = get_log_trans(prev_s, curr_d)
-                    
-                    if prev_score > LOG_ZERO and log_t > LOG_ZERO:
-                        score = prev_score + log_t
-                        if score > best_score:
-                            best_score = score
-                            best_prev = prev_s
-                
-                v_table[t][curr_d] = best_score
-                if best_prev:
-                    path[t][curr_d] = path[t][best_prev] + [curr_d]
-
-        # --- TERMINATION ---
-        # Find best score at T-1 among all states (or specifically End state)
-        # Usually we look for transition to "End" (M_Last)
-        
-        # Simplified: Just max score of emitting states at T-1
-        best_score = LOG_ZERO
-        best_state = None
-        
-        for s in states:
-            score = v_table[obs_len-1][s]
-            if score > best_score:
-                best_score = score
-                best_state = s
-        
-        if best_state is None:
-            return -np.inf, []
+            # Check if this state can emit the observation
+            if state not in self.emit_probs or obs_char not in self.emit_probs[state]:
+                continue
             
-        return best_score, path[obs_len-1][best_state]
+            emit_prob = np.log(self.emit_probs[state][obs_char] + 1e-300)
+            
+            # Find best predecessor from t-1
+            best_prob = -np.inf
+            best_prev = None
+            
+            for prev_state in self.hidden_states:
+                if v[t-1][prev_state] > -np.inf:
+                    if state in self.trans_probs.get(prev_state, {}):
+                        trans_prob = np.log(self.trans_probs[prev_state][state] + 1e-300)
+                        candidate = v[t-1][prev_state] + trans_prob + emit_prob
+                        if candidate > best_prob:
+                            best_prob = candidate
+                            best_prev = prev_state
+            
+            v[t][state] = best_prob
+            backptr[t][state] = best_prev
+        
+        # Process silent states (Deletions) at time t
+        # These can be reached from emitting states at time t (same timestep)
+        changed = True
+        while changed:
+            changed = False
+            for state in delete_states:
+                for prev_state in self.hidden_states:
+                    if v[t][prev_state] > -np.inf:
+                        if state in self.trans_probs.get(prev_state, {}):
+                            trans_prob = np.log(self.trans_probs[prev_state][state] + 1e-300)
+                            candidate = v[t][prev_state] + trans_prob
+                            if candidate > v[t][state]:
+                                v[t][state] = candidate
+                                backptr[t][state] = prev_state
+                                changed = True
+    
+    # Termination - find best path to End state
+    end_state = match_states[-1]  # M_{L+1}
+    
+    # End state can be reached from any state at t=obs_len
+    best_prob = -np.inf
+    best_last = None
+    
+    for state in self.hidden_states:
+        if v[obs_len][state] > -np.inf:
+            if end_state in self.trans_probs.get(state, {}):
+                trans_prob = np.log(self.trans_probs[state][end_state] + 1e-300)
+                candidate = v[obs_len][state] + trans_prob
+                if candidate > best_prob:
+                    best_prob = candidate
+                    best_last = state
+    
+    # Traceback
+    if best_last is None:
+        return -np.inf, []
+    
+    path = [end_state]
+    current = best_last
+    t = obs_len
+    
+    while current is not None and current != "M0":
+        path.append(current)
+        prev = backptr[t][current]
+        
+        # Determine if we move back in time
+        if current in match_states or current in insert_states:
+            if current != "M0":
+                t -= 1
+        
+        current = prev
+    
+    path.append("M0")
+    path.reverse()
+    
+    return best_prob, path
 
 
 # -------------------------------------------------------------------------
