@@ -103,7 +103,7 @@ class HMM:
 
         # Define Allowed Transitions (Topology)
         # From Mk, Ik, Dk -> M(k+1), I(k), D(k+1)
-        # Note: Handling boundary conditions (Start M0 and End M_Last)
+        # Note: boundary conditions (Start M0 and End M_Last)
 
         # Helper to safely init a transition if valid
         def add_edge(u, v):
@@ -242,28 +242,11 @@ class HMM:
         states = self.hidden_states
 
         # Viterbi DP table (Log space to prevent underflow)
-        # Using dictionary for sparse states or robust key access
         v_table = [{}]
         path = {}
 
-        # Initialization (t=0) - Handle Silent Start State M0
-        # M0 is effectively t=-1. We assume we start at M0.
-        # But M0 is silent. Standard Viterbi usually assumes t=0 is the first emission.
-        # For Profile HMM, we need to handle the silent transitions from M0 *before* emitting first char.
-        # Simplified approach: Calculate prob of reaching any state emitting O[0] from M0.
-
-        # NOTE: This is a simplified Viterbi for standard HMMs.
-        # Profile HMMs with silent states (Deletes) require a specific order of updates
-        # (M -> I -> D) within the same time step.
-        # Below is a standard Viterbi implementation.
-
-        # Initialize t=0
+        # Initialization (t=0)
         for s in states:
-            # We assume init_probs accounts for M0->First_State transition
-            # But in our model init['M0']=1.0.
-            # We need to propagate M0 to all reachable states *before* first emission.
-            # For simplicity in this assignment context, we rely on standard transitions.
-            # log(0) handled as -inf
             p_init = np.log(self.init_probs.get(s, 0) + 1e-300)
 
             # Check emission
