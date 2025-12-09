@@ -128,10 +128,10 @@ Initially, I felt quite overwhelmed and confused by the extensive instructions a
 
 # Personal Reflections
 ## Group Leader(Nikaela Aitken)
-Group leader's reflection on the project
+I'm interested in continuing to learn about HMMs and finding new ways to apply them to some personal projects I've been thinking about. For Profile HMMs, I started by digging into what they were conceptually and understanding how they differ from standard HMMs. After reading through the provided script, my partner (Tiange) had some new sections written, so I focused on how to improve what she had scripted out and debug anything that I foresaw as being an issue. This included implementing the shared background distribution for insertion states, refining the path-tracing logic to properly handle match vs. insert columns, and  reworking the Viterbi algorithm to handle silent states. Working through these fixes gave me a much deeper appreciation for the biological motivation behind Profile HMMs—particularly how the three-state architecture can captures both conservation and variation in protein families. The debugging process was challenging but rewarding, especially when dealing with the subtleties of silent state propagation in dynamic programming. Moving forward, I'm excited to explore how Profile HMMs could be applied to other sequence analysis problems I'm working on.
 
 ## Other member (Tiange Feng)
 I think the most successful aspect of our HMM-related projects—including this one—was the decision Nikaela and I made at the very beginning to establish a clear framework for representing the various variables. Given the number of variables inherent in HMM algorithms, this early agreement significantly streamlined our subsequent coding process. We have a effective synergy and happy collaboration.
 
 # Generative AI Appendix
-
+Claude sonnet 4.5 "dont adjust anything other than just fixing the spacing. dont change any typos or comments just the spacing" 
